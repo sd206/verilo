@@ -1,5 +1,5 @@
 # Copy to terraform.tfvars (git-ignored values are fine here; nothing secret).
-github_repository = "OWNER/REPO"
+github_repository = "sd206/verilo"
 # eng_admins_group   = "eng-admins@solidrocksolutions.co"
 # eng_readonly_group = "eng-readonly@solidrocksolutions.co"
 # region             = "us-south1"

@@ -10,7 +10,7 @@
 # commands as step 3/4 (applies are not automated in M0).
 set -euo pipefail
 
-: "${GITHUB_REPOSITORY:?set GITHUB_REPOSITORY=owner/repo}"
+GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-sd206/verilo}"
 cd "$(dirname "$0")"
 
 echo "== 1. shared: first apply with local state"

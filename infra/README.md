@@ -24,7 +24,7 @@ grant org-level IAM (for `sa-plan`'s Organization Viewer).
    offered in `us-south1` before M2**; if not, set `region = "us-central1"` now, before any data
    exists — all resources must be in one region.
 2. `gcloud auth application-default login`
-3. `GITHUB_REPOSITORY=owner/repo ./infra/bootstrap.sh`
+3. `./infra/bootstrap.sh` (trusts GitHub repo `sd206/verilo`; override with `GITHUB_REPOSITORY=…`)
    - applies `shared` with local state, moves the state into the new bucket,
    - applies `envs/staging` (Cloud Run starts with Google's placeholder image),
    - prints the GitHub repository variables to set.

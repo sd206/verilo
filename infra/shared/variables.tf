@@ -25,6 +25,7 @@ variable "region" {
 variable "github_repository" {
   description = "GitHub repository (owner/repo) allowed to use Workload Identity Federation."
   type        = string
+  default     = "sd206/verilo"
 }
 
 variable "eng_admins_group" {
