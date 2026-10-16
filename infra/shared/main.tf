@@ -47,6 +47,18 @@ resource "google_project_service" "shared" {
   disable_on_destroy = false
 }
 
+# Projects created through the API start with no APIs enabled. envs/staging bills its API
+# calls to the staging project, so Service Usage and Resource Manager must be on there first.
+resource "google_project_service" "staging_bootstrap" {
+  for_each = toset([
+    "cloudresourcemanager.googleapis.com",
+    "serviceusage.googleapis.com",
+  ])
+  project            = google_project.staging.project_id
+  service            = each.value
+  disable_on_destroy = false
+}
+
 # --- Terraform state bucket (shared) ----------------------------------------------
 resource "google_storage_bucket" "tfstate" {
   project                     = google_project.shared.project_id
