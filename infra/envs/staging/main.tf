@@ -46,11 +46,19 @@ locals {
 provider "google" {
   project = local.shared.staging_project_id
   region  = local.shared.region
+  # Bill API quota to the staging project (where the APIs are enabled), not to whatever
+  # quota project the caller's gcloud credentials happen to carry.
+  user_project_override = true
+  billing_project       = local.shared.staging_project_id
 }
 
 provider "google-beta" {
   project = local.shared.staging_project_id
   region  = local.shared.region
+  # Bill API quota to the staging project (where the APIs are enabled), not to whatever
+  # quota project the caller's gcloud credentials happen to carry.
+  user_project_override = true
+  billing_project       = local.shared.staging_project_id
 }
 
 module "env" {
