@@ -57,15 +57,21 @@ jobs:
 
       - name: Vulnerability scan (block on critical)
         run: |
+          # Scans run in the shared project (where the On-Demand Scanning API is enabled).
+          SCAN_PROJECT=$(echo "$REGISTRY" | cut -d/ -f2)
           for IMAGE in "$APP_IMAGE" "$CLAMAV_IMAGE"; do
-            SCAN=$(gcloud artifacts docker images scan "$IMAGE" --remote --location=us --format='value(response.scan)')
-            CRITICAL=$(gcloud artifacts docker images list-vulnerabilities "$SCAN" --location=us \
-              --format='value(vulnerability.effectiveSeverity)' | grep -c '^CRITICAL$' || true)
-            echo "$IMAGE: $CRITICAL critical"
+            if ! SCAN=$(gcloud artifacts docker images scan "$IMAGE" --remote --location=us \
+                  --project "$SCAN_PROJECT" --format='value(response.scan)' 2>/tmp/scan.err); then
+              echo "::error title=Scan failed for ${IMAGE##*/}::$(tail -c 900 /tmp/scan.err | tr '\n' ' ')"
+              exit 1
+            fi
+            gcloud artifacts docker images list-vulnerabilities "$SCAN" --location=us --project "$SCAN_PROJECT" \
+              --format='csv[no-heading](vulnerability.effectiveSeverity,vulnerability.packageIssue[0].affectedPackage,vulnerability.shortDescription)' \
+              > /tmp/vulns.csv
+            CRITICAL=$(grep -c '^CRITICAL,' /tmp/vulns.csv || true)
+            echo "::notice title=${IMAGE##*/}::$(wc -l < /tmp/vulns.csv) findings, ${CRITICAL} critical"
             if [ "$CRITICAL" -gt 0 ]; then
-              gcloud artifacts docker images list-vulnerabilities "$SCAN" --location=us \
-                --format='table(vulnerability.effectiveSeverity,vulnerability.shortDescription,vulnerability.packageIssue[0].affectedPackage)' \
-                | grep CRITICAL || true
+              echo "::error title=Critical vulnerabilities in ${IMAGE##*/}::$(grep '^CRITICAL,' /tmp/vulns.csv | head -10 | tr '\n' ';')"
               exit 1
             fi
           done
