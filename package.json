@@ -1,0 +1,36 @@
+{
+  "name": "verilo",
+  "private": true,
+  "packageManager": "pnpm@10.18.0",
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @verilo/web dev",
+    "build": "pnpm --filter @verilo/web build && pnpm build:bundles",
+    "build:bundles": "node scripts/bundle.mjs",
+    "typecheck": "pnpm -r --parallel typecheck",
+    "lint": "eslint . --max-warnings 0",
+    "test": "pnpm test:unit && pnpm test:integration",
+    "test:unit": "vitest run --project unit",
+    "test:integration": "vitest run --project integration",
+    "test:e2e": "pnpm --filter @verilo/e2e test",
+    "db:generate": "pnpm --filter @verilo/db generate",
+    "db:migrate": "pnpm --filter @verilo/db migrate",
+    "db:seed": "pnpm --filter @verilo/db seed",
+    "worker": "pnpm --filter @verilo/jobs worker"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/node": "22.19.1",
+    "@types/pg": "8.15.6",
+    "esbuild": "0.25.12",
+    "eslint": "10.13.0",
+    "globals": "17.13.0",
+    "pg": "8.23.1",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.71.2",
+    "vitest": "3.2.4"
+  }
+}

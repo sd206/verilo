@@ -1,0 +1,15 @@
+{
+  "name": "@verilo/e2e",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "playwright test --project=local",
+    "smoke": "playwright test --project=smoke",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@playwright/test": "1.56.1",
+    "@verilo/auth": "workspace:*"
+  }
+}

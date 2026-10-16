@@ -1,0 +1,9 @@
+packages:
+  - apps/*
+  - packages/*
+  - packages/integrations/*
+  - tests/*
+onlyBuiltDependencies:
+  - esbuild
+  - "@node-rs/argon2"
+  - sharp

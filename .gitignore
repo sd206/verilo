@@ -1,0 +1,13 @@
+node_modules/
+.next/
+dist/
+coverage/
+playwright-report/
+test-results/
+.env
+.env.local
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfplan
+.DS_Store

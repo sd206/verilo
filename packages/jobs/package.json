@@ -1,0 +1,24 @@
+{
+  "name": "@verilo/jobs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./logger": "./src/logger.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "migrate": "tsx src/bin/migrate.ts",
+    "worker": "tsx src/bin/worker.ts"
+  },
+  "dependencies": {
+    "@verilo/db": "workspace:*",
+    "pg-boss": "12.38.0",
+    "pino": "10.4.0",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@types/pg": "8.15.6"
+  }
+}

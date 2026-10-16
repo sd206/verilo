@@ -1,0 +1,23 @@
+{
+  "name": "@verilo/auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@google-cloud/kms": "6.3.0",
+    "@node-rs/argon2": "2.2.2",
+    "@verilo/db": "workspace:*",
+    "@verilo/domain": "workspace:*",
+    "otplib": "13.5.0",
+    "qrcode": "1.5.4"
+  },
+  "devDependencies": {
+    "@types/qrcode": "1.5.6"
+  }
+}

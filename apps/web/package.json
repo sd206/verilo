@@ -1,0 +1,38 @@
+{
+  "name": "@verilo/web",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 3000",
+    "build": "next build",
+    "start": "node .next/standalone/apps/web/server.js",
+    "typecheck": "tsc -p tsconfig.json",
+    "postbuild": "node ../../scripts/prepare-standalone.mjs"
+  },
+  "dependencies": {
+    "@radix-ui/react-label": "2.1.17",
+    "@radix-ui/react-slot": "1.5.0",
+    "@verilo/auth": "workspace:*",
+    "@verilo/db": "workspace:*",
+    "@verilo/domain": "workspace:*",
+    "@verilo/email": "workspace:*",
+    "@verilo/jobs": "workspace:*",
+    "@verilo/storage": "workspace:*",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
+    "next": "16.4.2",
+    "next-auth": "5.0.0-beta.32",
+    "pino": "10.4.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "tailwind-merge": "3.7.0",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "tailwindcss": "4.3.3"
+  }
+}

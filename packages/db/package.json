@@ -1,0 +1,27 @@
+{
+  "name": "@verilo/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema.ts",
+    "./migrate": "./src/migrate.ts",
+    "./testing": "./src/testing.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "generate": "drizzle-kit generate",
+    "migrate": "pnpm --filter @verilo/jobs migrate",
+    "seed": "tsx scripts/seed.ts"
+  },
+  "dependencies": {
+    "@verilo/domain": "workspace:*",
+    "drizzle-orm": "0.45.4",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@types/pg": "8.15.6",
+    "drizzle-kit": "0.31.11"
+  }
+}
