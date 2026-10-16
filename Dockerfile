@@ -22,16 +22,18 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm --filter @verilo/web build && node scripts/bundle.mjs
 
-FROM node:22-bookworm-slim AS runtime
+# Distroless runtime: Node and glibc only — no shell, package manager or perl (the slim Debian
+# base carried critical perl CVEs, which the deploy scan blocks on). Same Debian 12 glibc as the
+# build stage, so native modules (argon2) load unchanged. Runs as the built-in nonroot user.
+FROM gcr.io/distroless/nodejs22-debian12:nonroot AS runtime
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=8080 HOSTNAME=0.0.0.0 MIGRATIONS_DIR=/app/migrations
 WORKDIR /app
-RUN groupadd --system --gid 1001 app && useradd --system --uid 1001 --gid app app
-COPY --from=build --chown=app:app /repo/apps/web/.next/standalone ./
-COPY --from=build --chown=app:app /repo/apps/web/.next/static ./apps/web/.next/static
-COPY --from=build --chown=app:app /repo/apps/web/public ./apps/web/public
-COPY --from=build --chown=app:app /repo/dist ./dist
-COPY --from=build --chown=app:app /repo/packages/db/migrations ./migrations
-COPY --from=build --chown=app:app /repo/scripts/start.mjs ./scripts/start.mjs
-USER app
+COPY --from=build --chown=nonroot:nonroot /repo/apps/web/.next/standalone ./
+COPY --from=build --chown=nonroot:nonroot /repo/apps/web/.next/static ./apps/web/.next/static
+COPY --from=build --chown=nonroot:nonroot /repo/apps/web/public ./apps/web/public
+COPY --from=build --chown=nonroot:nonroot /repo/dist ./dist
+COPY --from=build --chown=nonroot:nonroot /repo/packages/db/migrations ./migrations
+COPY --from=build --chown=nonroot:nonroot /repo/scripts/start.mjs ./scripts/start.mjs
 EXPOSE 8080
-CMD ["node", "scripts/start.mjs"]
+# The distroless entrypoint is already `node`.
+CMD ["scripts/start.mjs"]
