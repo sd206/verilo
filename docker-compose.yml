@@ -22,7 +22,7 @@ services:
   # MinIO's own images were removed from Docker Hub and quay.io; this is Chainguard's build of
   # the same server. Pinned by digest.
   minio:
-    image: cgr.dev/chainguard/minio:latest
+    image: cgr.dev/chainguard/minio@sha256:2136d593beacf4461187035eca949fe49abd589d5079735025c711ca58fee0c8
     command: server /data --console-address ":9001"
     user: "0:0"
     environment:
@@ -32,7 +32,7 @@ services:
     volumes: [miniodata:/data]
 
   minio-init:
-    image: cgr.dev/chainguard/minio-client:latest-dev
+    image: cgr.dev/chainguard/minio-client@sha256:cd7f5d19d115615d809f27343b1e5cfbdc84f38e1c9a29475535b74ec5bade50
     depends_on: [minio]
     entrypoint: ["/bin/sh", "-c"]
     command:

@@ -52,9 +52,6 @@ jobs:
           fi
           set -e
           docker compose up --exit-code-from minio-init minio-init
-          for img in cgr.dev/chainguard/minio:latest cgr.dev/chainguard/minio-client:latest-dev; do
-            echo "::notice title=image digest::$(docker image inspect --format '{{index .RepoDigests 0}}' $img)"
-          done
 
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
