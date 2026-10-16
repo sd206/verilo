@@ -44,6 +44,9 @@ jobs:
           workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
           service_account: ${{ vars.GCP_DEPLOYER_SA }}
       - uses: google-github-actions/setup-gcloud@v2
+        with:
+          # `gcloud artifacts docker images scan` needs the On-Demand Scanning helper.
+          install_components: local-extract
 
       - name: Build and push images (once, tagged with the git SHA)
         run: |
@@ -61,7 +64,7 @@ jobs:
           SCAN_PROJECT=$(echo "$REGISTRY" | cut -d/ -f2)
           for IMAGE in "$APP_IMAGE" "$CLAMAV_IMAGE"; do
             if ! SCAN=$(gcloud artifacts docker images scan "$IMAGE" --remote --location=us \
-                  --project "$SCAN_PROJECT" --format='value(response.scan)' 2>/tmp/scan.err); then
+                  --project "$SCAN_PROJECT" --quiet --format='value(response.scan)' 2>/tmp/scan.err); then
               echo "::error title=Scan failed for ${IMAGE##*/}::$(tail -c 900 /tmp/scan.err | tr '\n' ' ')"
               exit 1
             fi
