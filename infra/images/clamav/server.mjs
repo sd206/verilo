@@ -69,5 +69,18 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+// Listen only once clamd answers, so a TCP startup probe means "ready to scan".
+async function waitForClamd() {
+  for (;;) {
+    try {
+      if ((await clamdCommand("PING")) === "PONG") return;
+    } catch {
+      // clamd still loading signatures
+    }
+    await new Promise((r) => setTimeout(r, 2000));
+  }
+}
+
+await waitForClamd();
 server.listen(PORT, () => console.log(JSON.stringify({ severity: "INFO", message: `clamav http listening on ${PORT}` })));
 process.on("SIGTERM", () => server.close(() => process.exit(0)));

@@ -1,0 +1,101 @@
+# Section 24.7 step 2: every merge to main deploys to staging, after CI passes.
+#   build the image once (tagged with the git SHA) → vulnerability scan (block on critical)
+#   → migrate job → web and worker → Playwright smoke test against staging.
+# Authenticates with Workload Identity Federation (no keys); only refs/heads/main can use sa-deployer.
+name: Deploy staging
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment:
+      name: staging
+      url: ${{ vars.STAGING_URL }}
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+      REGION: ${{ vars.GCP_REGION }}
+      PROJECT: ${{ vars.GCP_STAGING_PROJECT }}
+      REGISTRY: ${{ vars.ARTIFACT_REGISTRY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SHA }}
+
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_DEPLOYER_SA }}
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Build and push images (once, tagged with the git SHA)
+        run: |
+          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+          docker build -t "${REGISTRY}/app:${SHA}" .
+          docker build -t "${REGISTRY}/clamav:${SHA}" infra/images/clamav
+          docker push "${REGISTRY}/app:${SHA}"
+          docker push "${REGISTRY}/clamav:${SHA}"
+          echo "APP_IMAGE=${REGISTRY}/app@$(gcloud artifacts docker images describe "${REGISTRY}/app:${SHA}" --format='value(image_summary.digest)')" >> "$GITHUB_ENV"
+          echo "CLAMAV_IMAGE=${REGISTRY}/clamav@$(gcloud artifacts docker images describe "${REGISTRY}/clamav:${SHA}" --format='value(image_summary.digest)')" >> "$GITHUB_ENV"
+
+      - name: Vulnerability scan (block on critical)
+        run: |
+          for IMAGE in "$APP_IMAGE" "$CLAMAV_IMAGE"; do
+            SCAN=$(gcloud artifacts docker images scan "$IMAGE" --remote --location=us --format='value(response.scan)')
+            CRITICAL=$(gcloud artifacts docker images list-vulnerabilities "$SCAN" --location=us \
+              --format='value(vulnerability.effectiveSeverity)' | grep -c '^CRITICAL$' || true)
+            echo "$IMAGE: $CRITICAL critical"
+            if [ "$CRITICAL" -gt 0 ]; then
+              gcloud artifacts docker images list-vulnerabilities "$SCAN" --location=us \
+                --format='table(vulnerability.effectiveSeverity,vulnerability.shortDescription,vulnerability.packageIssue[0].affectedPackage)' \
+                | grep CRITICAL || true
+              exit 1
+            fi
+          done
+
+      - name: Deploy clamav
+        run: gcloud run deploy clamav --image "$CLAMAV_IMAGE" --region "$REGION" --project "$PROJECT" --quiet
+
+      - name: Run the migrate job
+        run: |
+          gcloud run jobs update migrate --image "$APP_IMAGE" --region "$REGION" --project "$PROJECT" --quiet
+          gcloud run jobs execute migrate --region "$REGION" --project "$PROJECT" --wait
+
+      - name: Deploy web
+        run: gcloud run deploy web --image "$APP_IMAGE" --region "$REGION" --project "$PROJECT" --quiet
+
+      - name: Deploy worker
+        run: gcloud run worker-pools deploy worker --image "$APP_IMAGE" --region "$REGION" --project "$PROJECT" --quiet
+
+      - name: Smoke test staging (sign in, upload a file)
+        if: ${{ vars.STAGING_URL != '' }}
+        env:
+          SMOKE_BASE_URL: ${{ vars.STAGING_URL }}
+          CI: "1"
+        run: |
+          corepack enable
+          pnpm install --frozen-lockfile --filter @verilo/e2e...
+          pnpm --filter @verilo/e2e exec playwright install --with-deps chromium
+          pnpm --filter @verilo/e2e smoke
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: smoke-report
+          path: tests/e2e/playwright-report
+          retention-days: 7

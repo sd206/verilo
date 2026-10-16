@@ -27,5 +27,4 @@
 body {
   background: var(--color-background);
   color: var(--color-foreground);
-  font-feature-settings: "tnum" 1;
 }

@@ -1,7 +1,5 @@
 # One image for web, worker and migrate (section 24.7: build once, promote the same digest).
-#   web:     node apps/web/server.js          (default CMD)
-#   worker:  node dist/worker.mjs
-#   migrate: node dist/migrate.mjs
+# APP_ROLE=web (default) | worker | migrate selects the entry point (scripts/start.mjs).
 FROM node:22-bookworm-slim AS base
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH NEXT_TELEMETRY_DISABLED=1
 RUN corepack enable && corepack prepare pnpm@10.18.0 --activate
@@ -33,6 +31,7 @@ COPY --from=build --chown=app:app /repo/apps/web/.next/static ./apps/web/.next/s
 COPY --from=build --chown=app:app /repo/apps/web/public ./apps/web/public
 COPY --from=build --chown=app:app /repo/dist ./dist
 COPY --from=build --chown=app:app /repo/packages/db/migrations ./migrations
+COPY --from=build --chown=app:app /repo/scripts/start.mjs ./scripts/start.mjs
 USER app
 EXPOSE 8080
-CMD ["node", "apps/web/server.js"]
+CMD ["node", "scripts/start.mjs"]

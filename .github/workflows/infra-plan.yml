@@ -1,0 +1,53 @@
+# Section 24.7 step 1: Terraform `plan` for changed infrastructure on pull requests. No apply.
+name: Terraform plan
+
+on:
+  pull_request:
+    paths: ["infra/**", ".github/workflows/infra-plan.yml"]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.4
+      - name: Format check (warning only until the first `terraform fmt` with a real binary)
+        run: terraform fmt -check -recursive -diff infra || echo "::warning::Run terraform fmt -recursive infra"
+      - name: Validate (no credentials needed)
+        run: |
+          for dir in infra/shared infra/envs/staging; do
+            terraform -chdir="$dir" init -backend=false -input=false
+            terraform -chdir="$dir" validate
+          done
+
+  plan:
+    needs: validate
+    # Needs the bootstrap (infra/README.md) to have run and the repository variables set.
+    if: ${{ vars.GCP_WIF_PROVIDER != '' && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        include:
+          - dir: infra/shared
+            var: github_repository=${{ github.repository }}
+          - dir: infra/envs/staging
+            var: tfstate_bucket=${{ vars.TFSTATE_BUCKET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.GCP_WIF_PROVIDER }}
+          service_account: ${{ vars.GCP_PLAN_SA }}
+      - name: Plan (read-only; no refresh so the plan identity needs no secret access)
+        run: |
+          terraform -chdir="${{ matrix.dir }}" init -input=false -backend-config="bucket=${{ vars.TFSTATE_BUCKET }}"
+          terraform -chdir="${{ matrix.dir }}" plan -input=false -lock=false -refresh=false -var "${{ matrix.var }}"

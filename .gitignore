@@ -11,3 +11,6 @@ test-results/
 .terraform/
 *.tfplan
 .DS_Store
+backend_override.tf
+*.tfvars
+!*.tfvars.example

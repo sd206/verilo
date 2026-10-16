@@ -37,17 +37,18 @@ export function Uploader() {
         <input
           ref={input}
           data-testid="file-input"
+          aria-label="Upload a file"
           type="file"
           accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.heif,application/pdf,image/*"
-          className="text-sm file:mr-3 file:rounded-md file:border file:border-input file:bg-card file:px-3 file:py-1.5 file:text-sm"
+          className="sr-only"
           onChange={(e) => {
             const f = e.target.files?.[0];
             if (f) void upload(f);
           }}
           disabled={status.kind === "busy"}
         />
-        <Button type="button" variant="outline" size="sm" onClick={() => input.current?.click()} disabled={status.kind === "busy"}>
-          Choose file
+        <Button type="button" variant="outline" onClick={() => input.current?.click()} disabled={status.kind === "busy"}>
+          Choose a file to upload
         </Button>
       </div>
       {status.kind === "busy" && <Alert>{status.text}</Alert>}

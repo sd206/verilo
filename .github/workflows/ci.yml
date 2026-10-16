@@ -1,0 +1,82 @@
+# Section 24.7 step 1 (and the gate for step 2): typecheck, lint, unit, integration and
+# end-to-end tests (R9). Runs on every pull request and every push to main.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      # docker-compose.yml services
+      TEST_MIGRATE_DATABASE_URL: postgres://verilo_owner:verilo@localhost:5432/verilo_test
+      TEST_DATABASE_URL: postgres://verilo_runtime:verilo_runtime@localhost:5432/verilo_test
+      MIGRATE_DATABASE_URL: postgres://verilo_owner:verilo@localhost:5432/verilo
+      DATABASE_URL: postgres://verilo_runtime:verilo_runtime@localhost:5432/verilo
+      APP_ENV: test
+      AUTH_SECRET: ci-only-auth-secret-ci-only-auth-secret-0000
+      APP_ENCRYPTION_KEY: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      STORAGE_DRIVER: s3
+      FILES_BUCKET: verilo-files
+      S3_ENDPOINT: http://localhost:9000
+      S3_ACCESS_KEY_ID: verilo
+      S3_SECRET_ACCESS_KEY: verilo-secret
+      CLAMAV_URL: http://localhost:8090
+      MAILPIT_URL: http://localhost:8025
+      LOG_LEVEL: warn
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start Postgres, MinIO, Mailpit and ClamAV
+        run: |
+          docker compose up -d --build --wait postgres minio mailpit clamav
+          docker compose up minio-init
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test:unit
+      - name: Integration tests (API + DB, RLS, T12, MinIO + ClamAV)
+        run: pnpm test:integration
+      - run: pnpm build
+
+      - name: Migrate the e2e database
+        run: pnpm db:migrate
+      - name: Install Playwright Chromium
+        run: pnpm --filter @verilo/e2e exec playwright install --with-deps chromium
+      - name: End-to-end tests (Playwright)
+        run: pnpm test:e2e
+        env:
+          CI: "1"
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: tests/e2e/playwright-report
+          retention-days: 7
+
+  docker:
+    # Proves the production image builds on every PR; the deploy workflow builds the image it ships.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t verilo-app:ci .
+      - run: docker build -t verilo-clamav:ci infra/images/clamav

@@ -1,0 +1,6 @@
+# Copy to terraform.tfvars (git-ignored values are fine here; nothing secret).
+github_repository = "OWNER/REPO"
+# eng_admins_group   = "eng-admins@solidrocksolutions.co"
+# eng_readonly_group = "eng-readonly@solidrocksolutions.co"
+# region             = "us-south1"
+# budget_staging_usd = 150
