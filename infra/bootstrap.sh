@@ -13,21 +13,28 @@ set -euo pipefail
 GITHUB_REPOSITORY="${GITHUB_REPOSITORY:-sd206/verilo}"
 cd "$(dirname "$0")"
 
-echo "== 1. shared: first apply with local state"
 pushd shared >/dev/null
-cat > backend_override.tf <<'HCL'
+if grep -q '"type": "gcs"' .terraform/terraform.tfstate 2>/dev/null; then
+  # Steps 1-2 already done on this machine: state lives in the bucket. Safe to re-run.
+  echo "== 1-2. shared: already migrated to the state bucket; applying any changes"
+  terraform apply -input=false -var "github_repository=${GITHUB_REPOSITORY}"
+  BUCKET=$(terraform output -raw tfstate_bucket)
+else
+  echo "== 1. shared: first apply with local state"
+  cat > backend_override.tf <<'HCL'
 terraform {
   backend "local" {}
 }
 HCL
-terraform init -input=false
-terraform apply -input=false -var "github_repository=${GITHUB_REPOSITORY}"
-BUCKET=$(terraform output -raw tfstate_bucket)
+  terraform init -input=false
+  terraform apply -input=false -var "github_repository=${GITHUB_REPOSITORY}"
+  BUCKET=$(terraform output -raw tfstate_bucket)
 
-echo "== 2. shared: move state into gs://${BUCKET}"
-rm backend_override.tf
-terraform init -input=false -migrate-state -force-copy -backend-config="bucket=${BUCKET}"
-rm -f terraform.tfstate terraform.tfstate.backup
+  echo "== 2. shared: move state into gs://${BUCKET}"
+  rm backend_override.tf
+  terraform init -input=false -migrate-state -force-copy -backend-config="bucket=${BUCKET}"
+  rm -f terraform.tfstate terraform.tfstate.backup
+fi
 popd >/dev/null
 
 echo "== 3. staging"
