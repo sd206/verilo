@@ -40,7 +40,17 @@ jobs:
 
       - name: Start Postgres, MinIO, Mailpit and ClamAV
         run: |
-          docker compose up -d --build --wait postgres minio mailpit clamav
+          set +e
+          docker compose up -d --build --wait postgres minio mailpit clamav > /tmp/compose.log 2>&1
+          status=$?
+          cat /tmp/compose.log
+          if [ $status -ne 0 ]; then
+            docker compose ps -a
+            docker compose logs --tail 50
+            echo "::error title=docker compose failed::$(grep -iE 'error|fail|unhealthy|not found|denied' /tmp/compose.log | tail -5 | tr '\n' ' ')"
+            exit $status
+          fi
+          set -e
           docker compose up minio-init
 
       - uses: pnpm/action-setup@v4
