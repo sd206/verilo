@@ -28,7 +28,7 @@ Requirements: Node 22, pnpm 10 (`corepack enable`), Docker.
 
 ```bash
 docker compose up -d --build --wait      # Postgres, MinIO, Mailpit, ClamAV (ClamAV takes ~2 min the first time)
-docker compose up minio-init             # creates the buckets
+docker compose up minio-init             # creates the buckets (exits when done)
 pnpm install
 cp .env.example apps/web/.env.local
 set -a; . apps/web/.env.local; set +a    # or export the variables another way
