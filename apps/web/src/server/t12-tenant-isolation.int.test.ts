@@ -22,6 +22,10 @@ import * as partiesH from "./handlers/parties";
 import * as consultantsH from "./handlers/consultants";
 import * as engagementsH from "./handlers/engagements";
 import * as settingsH from "./handlers/settings";
+import * as tsH from "./handlers/timesheets";
+import { receiveInboundEmail } from "./jobs/inbound";
+import { runExtractionJob } from "./jobs/extraction";
+import { runTimesheetChecksJob } from "./jobs/scheduled";
 import {
   addMember,
   closeTestDb,
@@ -30,6 +34,7 @@ import {
   linkToken,
   meta,
   PASSWORD,
+  screenshotPng,
   testDeps,
   uploadFile,
   type Actor,
@@ -40,8 +45,16 @@ const HERE = __dirname;
 
 const d = testDeps();
 
-let A: { firmId: string; admin: Actor; consultant: Actor; fileId: string; inviteToken: string; m: Awaited<ReturnType<typeof createMasterData>> };
-let B: { firmId: string; admin: Actor; consultant: Actor; m: Awaited<ReturnType<typeof createMasterData>> };
+let A: {
+  firmId: string;
+  admin: Actor;
+  consultant: Actor;
+  fileId: string;
+  inviteToken: string;
+  m: Awaited<ReturnType<typeof createMasterData>>;
+  ts: { timesheetId: string; evidenceId: string; unmatchedEvidenceId: string; checkId: string; extractionId: string };
+};
+let B: { firmId: string; admin: Actor; consultant: Actor; m: Awaited<ReturnType<typeof createMasterData>>; timesheetId: string; fileId: string };
 let before: Record<string, unknown[]>;
 
 /** Expects a 403/404 AppError. */
@@ -83,10 +96,33 @@ beforeAll(async () => {
   const aConsultant = await addMember(d, a.admin, "CONSULTANT");
   const file = await uploadFile(d, a.admin, "%PDF-1.4 alpha timesheet");
   const pending = await membersH.inviteUser(d, a.admin.ctx, { email: "pending-alpha@example.com", role: "FINANCE" });
-  A = { ...a, consultant: aConsultant, fileId: file.id, inviteToken: linkToken(d, pending), m: await createMasterData(d, a.admin, "Alpha") };
+  const am = await createMasterData(d, a.admin, "Alpha");
+  // M2: a timesheet with entries, evidence (extraction queued, never run here) and a check, plus
+  // a file in the unmatched queue.
+  const aOct = (await tsH.listTimesheetInbox(d, a.admin.ctx, { statuses: ["NOT_STARTED"] })).find((t) => t.periodStart === "2026-10-01")!;
+  await tsH.saveTimesheetEntries(d, a.admin.ctx, { timesheetId: aOct.id, entries: [{ workDate: "2026-10-01", hours: "8" }] });
+  const aPng = await uploadFile(d, a.admin, await screenshotPng(101), "a.png", "image/png");
+  const aEv = await tsH.uploadEvidence(d, a.admin.ctx, { timesheetId: aOct.id, fileId: aPng.id });
+  const aLoose = await uploadFile(d, a.admin, await screenshotPng(102), "loose.png", "image/png");
+  const aUnmatched = await tsH.uploadEvidence(d, a.admin.ctx, { fileId: aLoose.id });
+  const aDetail = await tsH.getTimesheetDetail(d, a.admin.ctx, { timesheetId: aOct.id });
+  const [aX] = await withTenant(d.db, a.admin.ctx, (tx) =>
+    tx.execute<{ id: string }>(sql`select id from extraction where firm_id = ${a.firmId} limit 1`).then((r) => r.rows),
+  );
+  A = {
+    ...a,
+    consultant: aConsultant,
+    fileId: file.id,
+    inviteToken: linkToken(d, pending),
+    m: am,
+    ts: { timesheetId: aOct.id, evidenceId: aEv.evidenceId, unmatchedEvidenceId: aUnmatched.evidenceId, checkId: aDetail.checks[0]!.id, extractionId: aX!.id },
+  };
 
   const b = await createFirmWithAdmin(d, "Bravo");
-  B = { ...b, consultant: await addMember(d, b.admin, "CONSULTANT"), m: await createMasterData(d, b.admin, "Bravo") };
+  const bm = await createMasterData(d, b.admin, "Bravo");
+  const bOct = (await tsH.listTimesheetInbox(d, b.admin.ctx, { statuses: ["NOT_STARTED"] })).find((t) => t.periodStart === "2026-10-01")!;
+  const bFile = await uploadFile(d, b.admin, await screenshotPng(201), "b.png", "image/png");
+  B = { ...b, consultant: await addMember(d, b.admin, "CONSULTANT"), m: bm, timesheetId: bOct.id, fileId: bFile.id };
   await uploadFile(d, B.admin, "%PDF-1.4 bravo timesheet");
 
   before = await snapshotFirm(A.firmId);
@@ -416,6 +452,111 @@ describe("T12: master data handlers with Firm A's ids", () => {
 });
 
 // ---------------------------------------------------------------------------
+// M2 timesheets, evidence, review and intake: Firm B's session with Firm A's ids
+// ---------------------------------------------------------------------------
+describe("T12: timesheet handlers with Firm A's ids", () => {
+  const b = () => B.admin.ctx;
+  const t = () => A.ts.timesheetId;
+
+  it("detail, entries, submit → 404 (staff and consultant sessions)", async () => {
+    await expectDenied(tsH.getTimesheetDetail(d, b(), { timesheetId: t() }));
+    await expectDenied(tsH.getTimesheetDetail(d, B.consultant.ctx, { timesheetId: t() }));
+    await expectDenied(tsH.saveTimesheetEntries(d, b(), { timesheetId: t(), entries: [{ workDate: "2026-10-02", hours: "8" }] }));
+    await expectDenied(tsH.saveTimesheetEntries(d, B.consultant.ctx, { timesheetId: t(), entries: [] }));
+    await expectDenied(tsH.submitTimesheet(d, b(), { timesheetId: t() }));
+  });
+
+  it("evidence: attach to A's timesheet, attach A's file, remove A's evidence → 404", async () => {
+    await expectDenied(tsH.uploadEvidence(d, b(), { timesheetId: t(), fileId: B.fileId }));
+    await expectDenied(tsH.uploadEvidence(d, b(), { timesheetId: B.timesheetId, fileId: A.fileId }));
+    await expectDenied(tsH.uploadEvidence(d, b(), { fileId: A.fileId }));
+    await expectDenied(tsH.removeEvidence(d, b(), { evidenceId: A.ts.evidenceId }));
+  });
+
+  it("review: resolve A's check, verify, return → 404", async () => {
+    await expectDenied(tsH.resolveCheck(d, b(), { checkId: A.ts.checkId, reason: "looks fine" }));
+    await expectDenied(tsH.verifyTimesheet(d, b(), { timesheetId: t() }));
+    await expectDenied(tsH.returnTimesheet(d, b(), { timesheetId: t(), reason: "nope nope" }));
+  });
+
+  it("unmatched queue: assigning A's file, or a file to A's timesheet → 404", async () => {
+    await expectDenied(tsH.assignUnmatchedFile(d, b(), { evidenceId: A.ts.unmatchedEvidenceId, timesheetId: B.timesheetId }));
+    await expectDenied(tsH.assignUnmatchedFile(d, b(), { evidenceId: A.ts.unmatchedEvidenceId, timesheetId: t() }));
+  });
+
+  it("client-sent firm ids are rejected", async () => {
+    await expectRejectedInput(tsH.saveTimesheetEntries(d, b(), { timesheetId: B.timesheetId, entries: [], firmId: A.firmId }));
+    await expectRejectedInput(tsH.listTimesheetInbox(d, b(), { firmId: A.firmId }));
+  });
+
+  it("lists contain only Firm B's timesheets and files", async () => {
+    const inbox = await tsH.listTimesheetInbox(d, b(), { statuses: ["NOT_STARTED", "DRAFT", "SUBMITTED", "NEEDS_REVIEW", "VERIFIED", "RETURNED", "INVOICED"] });
+    expect(inbox.length).toBeGreaterThan(0);
+    expect(inbox.map((x) => x.id)).not.toContain(t());
+    const unmatched = await tsH.listUnmatched(d, b());
+    expect(unmatched.items.map((x) => x.id)).not.toContain(A.ts.unmatchedEvidenceId);
+    expect(unmatched.timesheets.map((x) => x.id)).not.toContain(t());
+    const mine = await tsH.listMyTimesheets(d, B.consultant.ctx);
+    expect(mine.timesheets.map((x) => x.id)).not.toContain(t());
+  });
+
+  it("jobs scoped to Firm B can't touch Firm A's rows", async () => {
+    await runExtractionJob(d, { firmId: B.firmId, extractionId: A.ts.extractionId });
+    await runTimesheetChecksJob(d, { firmId: B.firmId, timesheetId: t() });
+  });
+
+  it("RLS: raw SQL in Firm B sees none of Firm A's M2 rows", async () => {
+    await withTenant(d.db, b(), async (tx) => {
+      for (const tb of ["timesheet", "timesheet_entry", "evidence", "extraction", "timesheet_check", "inbound_email", "ai_usage_event", "notification"]) {
+        const r = await tx.execute(sql.raw(`select count(*)::int as n from ${tb} where firm_id = '${A.firmId}'`));
+        expect((r.rows[0] as { n: number }).n, tb).toBe(0);
+      }
+    });
+    const err = await withTenant(d.db, b(), (tx) =>
+      tx.execute(sql`insert into evidence (firm_id, timesheet_id, file_id, source) values (${B.firmId}, ${t()}, ${B.fileId}, 'BULK_UPLOAD')`),
+    ).catch((e: unknown) => e as { cause?: { message?: string } });
+    expect(String((err as { cause?: { message?: string } })?.cause?.message ?? "")).toMatch(/foreign key/);
+  });
+});
+
+describe("T12: POST /api/inbound-email/:provider", () => {
+  const req = (body: object, auth = "postmark:test-inbound-webhook-secret") =>
+    new Request("http://localhost/api/inbound-email/postmark", {
+      method: "POST",
+      headers: { "content-type": "application/json", authorization: `Basic ${Buffer.from(auth).toString("base64")}` },
+      body: JSON.stringify(body),
+    });
+  const inbox = async (firmId: string) =>
+    (await withTenant(d.db, { firmId, userId: firmId === A.firmId ? A.admin.userId : B.admin.userId }, (tx) =>
+      tx.execute<{ a: string }>(sql`select timesheet_inbox_address as a from firm where id = ${firmId}`).then((r) => r.rows[0]!.a),
+    ));
+
+  it("without the webhook secret → 401 and nothing stored", async () => {
+    const res = await receiveInboundEmail(d, req({ From: "x@y.test", ToFull: [{ Email: await inbox(A.firmId) }], MessageID: "m1" }, "postmark:guess"), "postmark");
+    expect(res.status).toBe(401);
+  });
+
+  it("an email to Firm B's inbox from Firm A's consultant is stored in B only and doesn't match A's consultant", async () => {
+    const aConsultant = await consultantsH.getConsultantDetail(d, A.admin.ctx, { consultantId: A.m.consultantId });
+    const res = await receiveInboundEmail(
+      d,
+      req({ From: aConsultant.consultant.emails[0], ToFull: [{ Email: await inbox(B.firmId) }], MessageID: "t12-cross", Attachments: [] }),
+      "postmark",
+    );
+    expect(await res.json()).toEqual({ ok: true, stored: 1 });
+    const { processInboundEmailJob } = await import("./jobs/inbound");
+    const [row] = await withTenant(d.db, B.admin.ctx, (tx) =>
+      tx.execute<{ id: string }>(sql`select id from inbound_email where firm_id = ${B.firmId} and message_id = 't12-cross'`).then((r) => r.rows),
+    );
+    await processInboundEmailJob(d, { firmId: B.firmId, inboundEmailId: row!.id });
+    const [after] = await withTenant(d.db, B.admin.ctx, (tx) =>
+      tx.execute<{ matched_consultant_id: string | null }>(sql`select matched_consultant_id from inbound_email where id = ${row!.id}`).then((r) => r.rows),
+    );
+    expect(after!.matched_consultant_id).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // coverage guard: every handler and route must appear above
 // ---------------------------------------------------------------------------
 const COVERED_HANDLERS = new Set([
@@ -465,10 +606,22 @@ const COVERED_HANDLERS = new Set([
   "settings.setNumberingPattern",
   "settings.previewInvoiceNumber",
   "settings.setHolidays",
+  "timesheets.listMyTimesheets",
+  "timesheets.getTimesheetDetail",
+  "timesheets.saveTimesheetEntries",
+  "timesheets.submitTimesheet",
+  "timesheets.uploadEvidence",
+  "timesheets.removeEvidence",
+  "timesheets.resolveCheck",
+  "timesheets.verifyTimesheet",
+  "timesheets.returnTimesheet",
+  "timesheets.listTimesheetInbox",
+  "timesheets.listUnmatched",
+  "timesheets.assignUnmatchedFile",
 ]);
 /** Exported helpers that are not request handlers. */
 const NOT_HANDLERS = new Set(["auth.slugify", "routes.cookieFromRequest", "members.INVITE_TTL_DAYS"]);
-const COVERED_ROUTES = new Set(["api/auth/[...nextauth]", "api/health", "api/files/[id]/download"]);
+const COVERED_ROUTES = new Set(["api/auth/[...nextauth]", "api/health", "api/files/[id]/download", "api/inbound-email/[provider]"]);
 
 describe("T12 coverage", () => {
   it("every exported handler has a tenant-isolation case", () => {
@@ -482,6 +635,7 @@ describe("T12 coverage", () => {
       consultants: consultantsH,
       engagements: engagementsH,
       settings: settingsH,
+      timesheets: tsH,
     };
     const exported = Object.entries(modules).flatMap(([m, mod]) =>
       Object.entries(mod)
@@ -505,6 +659,7 @@ describe("T12 coverage", () => {
       "parties.ts",
       "routes.ts",
       "settings.ts",
+      "timesheets.ts",
     ]);
   });
 
@@ -558,6 +713,15 @@ describe("T12 coverage", () => {
       previewInvoiceNumberAction: "settings.previewInvoiceNumber",
       setHolidaysAction: "settings.setHolidays",
       updateMemberAction: "members.updateMember",
+      saveTimesheetEntriesAction: "timesheets.saveTimesheetEntries",
+      submitTimesheetAction: "timesheets.submitTimesheet",
+      uploadEvidenceAction: "timesheets.uploadEvidence",
+      removeEvidenceAction: "timesheets.removeEvidence",
+      resolveCheckAction: "timesheets.resolveCheck",
+      verifyTimesheetAction: "timesheets.verifyTimesheet",
+      returnTimesheetAction: "timesheets.returnTimesheet",
+      assignUnmatchedFileAction: "timesheets.assignUnmatchedFile",
+      getTimesheetDetailAction: "timesheets.getTimesheetDetail",
     };
     const found = fs
       .readdirSync(actionsDir)

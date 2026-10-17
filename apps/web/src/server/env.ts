@@ -8,6 +8,7 @@ const schema = z.object({
   AUTH_SECRET: z.string().min(32),
   INBOUND_EMAIL_DOMAIN: z.string().default("inbound.localhost"),
   MAGIC_LINK_ENABLED: z.enum(["0", "1"]).default("1"),
+  POSTMARK_INBOUND_WEBHOOK_SECRET: z.string().min(16).optional(),
 });
 
 export type Env = z.infer<typeof schema>;

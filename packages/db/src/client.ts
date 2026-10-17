@@ -75,3 +75,16 @@ export async function setContext(tx: Tx, ctx: Partial<TenantContext>): Promise<v
     await tx.execute(sql`select set_config('app.user_id', ${ctx.userId}, true)`);
   }
 }
+
+/**
+ * Runs `fn` scoped to one firm with no user: background jobs and webhooks act for the firm
+ * (audit rows have a null actor). The firm id comes from a job payload the app enqueued, or from
+ * a SECURITY DEFINER lookup — never from client input (R3).
+ */
+export async function withFirm<T>(db: Db, firmId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
+  assertUuid(firmId, "firmId");
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select set_config('app.firm_id', ${firmId}, true)`);
+    return fn(tx);
+  });
+}

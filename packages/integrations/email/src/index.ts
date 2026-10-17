@@ -2,7 +2,7 @@
  * Outbound email (section 3: Postmark). Locally, Mailpit's HTTP send API. In staging before a
  * Postmark server exists, the disabled sender reports that email is off and callers fall back
  * (invite links are shown to the inviting admin outside production; magic links are hidden).
- * Inbound parsing arrives in M2.
+ * Inbound parsing (section 9) is in ./inbound.ts.
  */
 export interface OutboundEmail {
   to: string;
@@ -11,6 +11,10 @@ export interface OutboundEmail {
   html: string;
   /** Postmark message stream; "outbound" is the transactional default. */
   stream?: string;
+  /** Extra headers, e.g. Auto-Submitted on auto-replies and In-Reply-To. */
+  headers?: Record<string, string>;
+  /** Overrides the sender's default From (auto-replies come from the inbox address). */
+  from?: string;
 }
 
 export interface EmailSender {
@@ -40,8 +44,9 @@ export class PostmarkSender implements EmailSender {
         "x-postmark-server-token": this.serverToken,
       },
       body: JSON.stringify({
-        From: this.from,
+        From: msg.from ?? this.from,
         To: msg.to,
+        Headers: Object.entries(msg.headers ?? {}).map(([Name, Value]) => ({ Name, Value })),
         Subject: msg.subject,
         TextBody: msg.text,
         HtmlBody: msg.html,
@@ -64,8 +69,9 @@ export class MailpitSender implements EmailSender {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        From: { Email: this.from },
+        From: { Email: msg.from ?? this.from },
         To: [{ Email: msg.to }],
+        Headers: msg.headers ?? {},
         Subject: msg.subject,
         Text: msg.text,
         HTML: msg.html,
@@ -122,3 +128,42 @@ export function magicLinkEmail(input: { to: string; link: string }): OutboundEma
   );
   return { to: input.to, subject, text, html };
 }
+
+export function autoReplyEmail(input: { to: string; from: string; subject: string | null; inReplyTo: string | null }): OutboundEmail {
+  const subject = input.subject ? `Re: ${input.subject.replace(/^re:\s*/i, "")}` : "Received";
+  const text = "Received — we'll let you know if anything is missing.";
+  return {
+    to: input.to,
+    from: input.from,
+    subject,
+    text,
+    html: layout("Received", `<p>${esc(text)}</p>`),
+    // RFC 3834: mark it so other auto-responders don't answer it.
+    headers: { "Auto-Submitted": "auto-replied", ...(input.inReplyTo ? { "In-Reply-To": input.inReplyTo, References: input.inReplyTo } : {}) },
+  };
+}
+
+export function timesheetReminderEmail(input: { to: string; firmName: string; consultantName: string; period: string; link: string }): OutboundEmail {
+  const subject = `Reminder: submit your timesheet for ${input.period}`;
+  const text = `Hi ${input.consultantName},\n\nYour ${input.period} timesheet for ${input.firmName} hasn't been submitted yet. Enter your hours and attach the approved screenshot: ${input.link}\n\nYou can also reply to your timesheet inbox with the screenshot.`;
+  const html = layout(
+    subject,
+    `<p>Hi ${esc(input.consultantName)},</p><p>Your <b>${esc(input.period)}</b> timesheet for ${esc(input.firmName)} hasn't been submitted yet.</p>
+<p><a href="${esc(input.link)}" style="background:#1c1917;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none">Submit timesheet</a></p>`,
+  );
+  return { to: input.to, subject, text, html };
+}
+
+export function timesheetReturnedEmail(input: { to: string; firmName: string; consultantName: string; period: string; reason: string; link: string }): OutboundEmail {
+  const subject = `Your ${input.period} timesheet needs a fix`;
+  const text = `Hi ${input.consultantName},\n\n${input.firmName} returned your ${input.period} timesheet:\n\n${input.reason}\n\nFix it here: ${input.link}`;
+  const html = layout(
+    subject,
+    `<p>Hi ${esc(input.consultantName)},</p><p>${esc(input.firmName)} returned your <b>${esc(input.period)}</b> timesheet:</p>
+<blockquote style="border-left:3px solid #d6d3d1;margin:0;padding-left:12px">${esc(input.reason)}</blockquote>
+<p><a href="${esc(input.link)}" style="background:#1c1917;color:#fff;padding:10px 16px;border-radius:6px;text-decoration:none">Fix timesheet</a></p>`,
+  );
+  return { to: input.to, subject, text, html };
+}
+
+export * from "./inbound";

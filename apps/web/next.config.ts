@@ -18,10 +18,11 @@ const config: NextConfig = {
     "@verilo/db",
     "@verilo/domain",
     "@verilo/email",
+    "@verilo/ai",
     "@verilo/jobs",
     "@verilo/storage",
   ],
-  serverExternalPackages: ["@node-rs/argon2", "pg", "pg-boss", "pino", "@google-cloud/storage", "@google-cloud/kms"],
+  serverExternalPackages: ["@node-rs/argon2", "pg", "pg-boss", "pino", "@google-cloud/storage", "@google-cloud/kms", "@google/genai", "sharp", "@napi-rs/canvas", "pdfjs-dist", "heic-convert"],
   experimental: {
     serverActions: { bodySizeLimit: "1mb" },
   },

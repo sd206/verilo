@@ -14,7 +14,8 @@ export async function insertFile(
     filename: string;
     mimeType: string;
     sizeBytes: number;
-    uploadedBy: string;
+    /** Null for files that arrived by email. */
+    uploadedBy: string | null;
     source: "UPLOAD" | "EMAIL" | "SYSTEM";
   },
 ): Promise<FileRow> {
@@ -61,4 +62,8 @@ export async function recordScanResult(
     .returning();
   if (!row) throw new Error("file scan status changed concurrently");
   return row;
+}
+
+export async function setPerceptualHash(tx: Queryable, firmId: string, id: string, hash: string): Promise<void> {
+  await tx.update(file).set({ perceptualHash: hash }).where(and(eq(file.firmId, firmId), eq(file.id, id)));
 }

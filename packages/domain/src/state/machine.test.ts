@@ -69,3 +69,20 @@ describe("file.scan_status machine", () => {
     expect(isFileViewable("INFECTED")).toBe(false);
   });
 });
+
+describe("intake machines", async () => {
+  const { extractionStatusMachine, inboundEmailMachine } = await import("./intake");
+  it("extraction: claim, finish, and retry a crashed run", () => {
+    expect(extractionStatusMachine.transition("QUEUED", "RUNNING")).toBe("RUNNING");
+    expect(extractionStatusMachine.transition("RUNNING", "DONE")).toBe("DONE");
+    expect(extractionStatusMachine.transition("RUNNING", "QUEUED")).toBe("QUEUED");
+    expect(() => extractionStatusMachine.transition("DONE", "RUNNING")).toThrow(InvalidTransitionError);
+    expect(() => extractionStatusMachine.transition("FAILED", "QUEUED")).toThrow(InvalidTransitionError);
+  });
+  it("inbound email: unmatched waits for assignment; processed and rejected are final", () => {
+    expect(inboundEmailMachine.transition("RECEIVED", "UNMATCHED")).toBe("UNMATCHED");
+    expect(inboundEmailMachine.transition("UNMATCHED", "PROCESSED")).toBe("PROCESSED");
+    expect(() => inboundEmailMachine.transition("PROCESSED", "UNMATCHED")).toThrow(InvalidTransitionError);
+    expect(() => inboundEmailMachine.transition("REJECTED", "PROCESSED")).toThrow(InvalidTransitionError);
+  });
+});

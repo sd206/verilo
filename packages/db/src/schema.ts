@@ -79,6 +79,8 @@ export const firm = pgTable("firm", {
   apInboxAddress: text("ap_inbox_address").notNull().unique(),
   matchToleranceCents: integer("match_tolerance_cents").notNull().default(100),
   deductionToleranceCents: integer("deduction_tolerance_cents").notNull().default(100),
+  /** Section 9 "Auto-reply (configurable)" for the timesheet inbox. Approved M2 addition. */
+  timesheetAutoReply: boolean("timesheet_auto_reply").notNull().default(true),
   /** Per-firm data key, wrapped by the KMS `app` key (section 24.5). Approved M0 addition. */
   wrappedDataKey: text("wrapped_data_key").notNull(),
 });
@@ -494,6 +496,237 @@ export const firmHoliday = pgTable(
   (t) => [uniqueIndex("firm_holiday_firm_date_key").on(t.firmId, t.holidayDate)],
 );
 
+// ---------------------------------------------------------------------------
+// 5.4 Timesheets and evidence (M2)
+// ---------------------------------------------------------------------------
+export const timesheetStatusEnum = pgEnum("timesheet_status", [
+  "NOT_STARTED",
+  "DRAFT",
+  "SUBMITTED",
+  "NEEDS_REVIEW",
+  "VERIFIED",
+  "RETURNED",
+  "INVOICED",
+]);
+export const evidenceSourceEnum = pgEnum("evidence_source", [
+  "CONSULTANT_UPLOAD",
+  "EMAIL",
+  "BULK_UPLOAD",
+  "PRIME_CONFIRMATION",
+  "APPROVER_LINK",
+]);
+export const extractionStatusEnum = pgEnum("extraction_status", ["QUEUED", "RUNNING", "DONE", "FAILED"]);
+export const checkSeverityEnum = pgEnum("check_severity", ["BLOCK", "WARN", "INFO"]);
+export const checkCodeEnum = pgEnum("check_code", [
+  "NO_EVIDENCE",
+  "EXTRACTION_PENDING",
+  "HOURS_MISMATCH",
+  "PERIOD_MISMATCH",
+  "NOT_APPROVED",
+  "NAME_MISMATCH",
+  "LOW_CONFIDENCE",
+  "DUPLICATE_EVIDENCE",
+  "OUTSIDE_ENGAGEMENT",
+  "NO_RATE",
+  "HOLIDAY_HOURS",
+  "HIGH_HOURS",
+  "PO_EXCEEDED",
+  "RATE_CHANGE_IN_PERIOD",
+]);
+export const inboxEnum = pgEnum("inbox", ["TIMESHEET", "AP"]);
+export const inboundEmailStatusEnum = pgEnum("inbound_email_status", ["RECEIVED", "PROCESSED", "UNMATCHED", "REJECTED"]);
+export const documentKindEnum = pgEnum("document_kind", ["TIMESHEET", "VENDOR_INVOICE", "REMITTANCE"]);
+export const nonBillableReasonEnum = pgEnum("non_billable_reason", [
+  "VALIDATION_RETRY",
+  "PROVIDER_ERROR",
+  "DUPLICATE",
+  "SCAN_REJECTED",
+]);
+export const notificationChannelEnum = pgEnum("notification_channel", ["IN_APP", "EMAIL"]);
+
+export const timesheet = pgTable(
+  "timesheet",
+  {
+    id: id(),
+    ...tsCols(),
+    firmId: firmRef(),
+    engagementId: uuid("engagement_id")
+      .notNull()
+      .references(() => engagement.id),
+    periodStart: date("period_start", { mode: "string" }).notNull(),
+    periodEnd: date("period_end", { mode: "string" }).notNull(),
+    status: timesheetStatusEnum("status").notNull().default("NOT_STARTED"),
+    totalHours: numeric("total_hours", { precision: 7, scale: 2 }).notNull().default("0"),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    verifiedBy: uuid("verified_by").references(() => appUser.id),
+    returnedReason: text("returned_reason"),
+    /** Set when invoiced (M3 adds the FK to invoice). */
+    invoiceId: uuid("invoice_id"),
+  },
+  (t) => [
+    index("timesheet_firm_id_idx").on(t.firmId),
+    uniqueIndex("timesheet_engagement_period_key").on(t.engagementId, t.periodStart),
+  ],
+);
+
+export const timesheetEntry = pgTable(
+  "timesheet_entry",
+  {
+    id: id(),
+    ...tsCols(),
+    firmId: firmRef(),
+    timesheetId: uuid("timesheet_id")
+      .notNull()
+      .references(() => timesheet.id),
+    workDate: date("work_date", { mode: "string" }).notNull(),
+    hours: numeric("hours", { precision: 5, scale: 2 }).notNull(),
+    rateKind: rateKindEnum("rate_kind").notNull().default("REGULAR"),
+    note: text("note"),
+  },
+  (t) => [
+    index("timesheet_entry_firm_id_idx").on(t.firmId),
+    uniqueIndex("timesheet_entry_day_kind_key").on(t.timesheetId, t.workDate, t.rateKind),
+  ],
+);
+
+export const extraction = pgTable(
+  "extraction",
+  {
+    id: id(),
+    ...tsCols(),
+    firmId: firmRef(),
+    fileId: uuid("file_id")
+      .notNull()
+      .references(() => file.id),
+    status: extractionStatusEnum("status").notNull().default("QUEUED"),
+    model: text("model"),
+    promptVersion: text("prompt_version"),
+    /** Every raw provider response, plus the page count (8.1 "store the raw response"). */
+    rawJson: jsonb("raw_json"),
+    /** The Zod-validated proposal (8.2). Never applied to records directly. */
+    resultJson: jsonb("result_json"),
+    overallConfidence: numeric("overall_confidence", { precision: 3, scale: 2 }),
+    error: text("error"),
+    costCents: integer("cost_cents"),
+  },
+  (t) => [index("extraction_firm_id_idx").on(t.firmId), index("extraction_file_idx").on(t.fileId)],
+);
+
+export const inboundEmail = pgTable(
+  "inbound_email",
+  {
+    id: id(),
+    ...tsCols(),
+    firmId: firmRef(),
+    inbox: inboxEnum("inbox").notNull(),
+    messageId: text("message_id").notNull(),
+    fromAddress: text("from_address").notNull(),
+    subject: text("subject"),
+    receivedAt: timestamp("received_at", { withTimezone: true }).notNull(),
+    rawStorageKey: text("raw_storage_key").notNull(),
+    status: inboundEmailStatusEnum("status").notNull().default("RECEIVED"),
+    /** Why it was rejected or left unmatched (shown in the unmatched queue). Approved M2 addition. */
+    statusReason: text("status_reason"),
+    matchedConsultantId: uuid("matched_consultant_id").references(() => consultant.id),
+    matchedPartyId: uuid("matched_party_id").references(() => party.id),
+  },
+  (t) => [
+    index("inbound_email_firm_id_idx").on(t.firmId),
+    // Section 9 de-duplicates by Message-ID; per firm and inbox, so one email sent to two firms reaches both.
+    uniqueIndex("inbound_email_message_key").on(t.firmId, t.inbox, t.messageId),
+  ],
+);
+
+export const evidence = pgTable(
+  "evidence",
+  {
+    id: id(),
+    ...tsCols(),
+    firmId: firmRef(),
+    /** Null while the evidence waits in the unmatched queue. */
+    timesheetId: uuid("timesheet_id").references(() => timesheet.id),
+    fileId: uuid("file_id")
+      .notNull()
+      .references(() => file.id),
+    source: evidenceSourceEnum("source").notNull(),
+    extractionId: uuid("extraction_id").references(() => extraction.id),
+    /** The email it arrived in, for the unmatched queue. Approved M2 addition. */
+    inboundEmailId: uuid("inbound_email_id").references(() => inboundEmail.id),
+    /** The consultant it was matched to before a timesheet was found (8.6 step 1). Approved M2 addition. */
+    consultantId: uuid("consultant_id").references(() => consultant.id),
+  },
+  (t) => [
+    index("evidence_firm_id_idx").on(t.firmId),
+    index("evidence_timesheet_idx").on(t.timesheetId),
+    uniqueIndex("evidence_file_key").on(t.fileId),
+  ],
+);
+
+export const timesheetCheck = pgTable(
+  "timesheet_check",
+  {
+    id: id(),
+    ...tsCols(),
+    firmId: firmRef(),
+    timesheetId: uuid("timesheet_id")
+      .notNull()
+      .references(() => timesheet.id),
+    checkCode: checkCodeEnum("check_code").notNull(),
+    severity: checkSeverityEnum("severity").notNull(),
+    message: text("message").notNull(),
+    resolvedBy: uuid("resolved_by").references(() => appUser.id),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    resolutionReason: text("resolution_reason"),
+  },
+  (t) => [
+    index("timesheet_check_firm_id_idx").on(t.firmId),
+    uniqueIndex("timesheet_check_code_key").on(t.timesheetId, t.checkCode),
+  ],
+);
+
+/** Section 22.4/22.7. Recorded from M2; the allowance is enforced in M9. */
+export const aiUsageEvent = pgTable(
+  "ai_usage_event",
+  {
+    id: id(),
+    ...tsCols(),
+    firmId: firmRef(),
+    extractionId: uuid("extraction_id").references(() => extraction.id),
+    fileId: uuid("file_id")
+      .notNull()
+      .references(() => file.id),
+    documentKind: documentKindEnum("document_kind").notNull(),
+    pages: integer("pages").notNull(),
+    billable: boolean("billable").notNull(),
+    nonBillableReason: nonBillableReasonEnum("non_billable_reason"),
+    /** First day of the month in the firm's time zone. */
+    usageMonth: date("usage_month", { mode: "string" }).notNull(),
+    providerCostCents: integer("provider_cost_cents"),
+  },
+  (t) => [index("ai_usage_event_firm_month_idx").on(t.firmId, t.usageMonth)],
+);
+
+/** Section 5.9. */
+export const notification = pgTable(
+  "notification",
+  {
+    id: id(),
+    ...tsCols(),
+    firmId: firmRef(),
+    userId: uuid("user_id").references(() => appUser.id),
+    toEmail: text("to_email"),
+    type: text("type").notNull(),
+    entityType: text("entity_type"),
+    entityId: uuid("entity_id"),
+    channel: notificationChannelEnum("channel").notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    dedupeKey: text("dedupe_key").notNull().unique(),
+  },
+  (t) => [index("notification_firm_id_idx").on(t.firmId)],
+);
+
 /** Tenant-owned tables: `firm` itself plus every table with firm_id. A test checks RLS on each. */
 export const TENANT_TABLES = [
   "firm",
@@ -509,4 +742,12 @@ export const TENANT_TABLES = [
   "rate",
   "purchase_order",
   "firm_holiday",
+  "timesheet",
+  "timesheet_entry",
+  "extraction",
+  "inbound_email",
+  "evidence",
+  "timesheet_check",
+  "ai_usage_event",
+  "notification",
 ] as const;

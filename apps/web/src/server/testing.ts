@@ -18,6 +18,8 @@ import {
 import type { EmailSender, OutboundEmail } from "@verilo/email";
 import type { ObjectInfo, ObjectStorage, ScanResult, SignedUpload, VirusScanner } from "@verilo/storage";
 import type { Role } from "@verilo/domain";
+import { MemoryQueue } from "@verilo/jobs";
+import { ModelExtractor, ScriptedClient } from "@verilo/ai";
 import type { Deps } from "./deps";
 import * as authH from "./handlers/auth";
 import * as membersH from "./handlers/members";
@@ -84,7 +86,15 @@ export function testDeps(over: Partial<Deps> = {}): Deps & { storage: ObjectStor
     email: new CapturingEmail(),
     keys: new LocalKeyWrapper(process.env.APP_ENCRYPTION_KEY!),
     log: pino({ level: "silent" }),
-    config: { appEnv: "test", baseUrl: "http://localhost:3000", inboundDomain: "inbound.test", magicLinkEnabled: true },
+    jobs: new MemoryQueue(),
+    extractor: new ModelExtractor(new ScriptedClient(), { providerRetryDelayMs: 0 }),
+    config: {
+      appEnv: "test",
+      baseUrl: "http://localhost:3000",
+      inboundDomain: "inbound.test",
+      magicLinkEnabled: true,
+      inboundWebhookSecret: "test-inbound-webhook-secret",
+    },
     ...over,
   };
 }
@@ -247,4 +257,23 @@ export async function createMasterData(d: Deps, admin: Actor, label = "X") {
     poId: po.id,
     code,
   };
+}
+
+/** Signs up a CONSULTANT user linked to an existing consultant record. */
+export async function addConsultantUser(d: Deps, admin: Actor, consultantId: string, email: string): Promise<Actor> {
+  const inv = await membersH.inviteUser(d, admin.ctx, { email, role: "CONSULTANT", name: `${email} user`, consultantId });
+  const acc = await membersH.acceptInvite(d, meta(), { token: linkToken(d, inv), name: email.split("@")[0]!, password: PASSWORD });
+  return actorFromToken(d, acc.session.token, email, null);
+}
+
+/** A screenshot-sized PNG (noise, so it's well over the 20 KB logo filter); `seed` changes the bytes. */
+export async function screenshotPng(seed = 1, width = 640, height = 480): Promise<Buffer> {
+  const { default: sharp } = await import("sharp");
+  let x = seed * 2654435761;
+  const px = Buffer.alloc(width * height * 3);
+  for (let i = 0; i < px.length; i++) {
+    x = (x * 1103515245 + 12345) & 0x7fffffff;
+    px[i] = (x >> 16) & 0xff;
+  }
+  return sharp(px, { raw: { width, height, channels: 3 } }).png().toBuffer();
 }

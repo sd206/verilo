@@ -14,6 +14,7 @@ import {
   listParties,
   listPurchaseOrders,
   listRates,
+  listTimesheets,
   lockEngagement,
   setRateEnd,
   updateEngagement as updateEngagementRepo,
@@ -31,6 +32,7 @@ import {
   formatCents,
   marginPreview,
   parsePercentToBps,
+  periodLabel,
   resolveRate,
   validateEngagement,
   validateNewRate,
@@ -40,6 +42,7 @@ import {
   type Rate,
 } from "@verilo/domain";
 import type { Deps } from "../deps";
+import { ensureTimesheets } from "../timesheets/service";
 import { parse, uuid } from "./common";
 import { bool, dollars, isoDate, optionalDollars, optionalIsoDate, optionalPercent, optionalText, text, todayIn } from "./fields";
 
@@ -120,6 +123,12 @@ export async function getEngagementDetail(d: Deps, ctx: FirmContext, input: unkn
       },
       billOnly: bill.ok && !pay.ok ? { asOf, bill: formatCents(bill.rateCents) } : null,
       deduction: formatBps(effectiveDeductionBps(billTo.standardDeductionBps, e.deductionBpsOverride)),
+      timesheets: (await listTimesheets(tx, ctx.firmId, { engagementId })).map((t) => ({
+        id: t.id,
+        period: periodLabel({ start: t.periodStart, end: t.periodEnd }),
+        status: t.status,
+        totalHours: t.totalHours,
+      })),
       today,
       canEdit: can(ctx.role, "EDIT_MASTER_DATA"),
       canEditRates: can(ctx.role, "EDIT_RATES"),
@@ -235,6 +244,10 @@ export async function setEngagementStatus(d: Deps, ctx: FirmContext, input: unkn
     }
     const after = await updateEngagementRepo(tx, ctx.firmId, before.id, patch);
     await audit(tx, ctx, "engagement", before.id, "status_change", { status: before.status, endDate: before.endDate }, { status: after.status, endDate: after.endDate });
+    // Timesheets for periods that have already started appear straight away (7.1), not overnight.
+    if (next === "ACTIVE") {
+      await ensureTimesheets(tx, { firmId: ctx.firmId, userId: ctx.userId, role: ctx.role, ip: ctx.ip, userAgent: ctx.userAgent }, (await getFirm(tx, ctx.firmId))!, [after]);
+    }
     return { id: before.id, status: next };
   });
 }

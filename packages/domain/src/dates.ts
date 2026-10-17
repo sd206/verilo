@@ -44,3 +44,21 @@ export function daysBetween(a: IsoDate, b: IsoDate): number {
   };
   return Math.round((t(b) - t(a)) / 86_400_000);
 }
+
+/** The calendar date of `instant` in an IANA time zone (R12: work dates are firm-local). */
+export function localDate(instant: Date, timeZone: string): IsoDate {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(instant);
+  const get = (t: string) => parts.find((p) => p.type === t)!.value;
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
+
+/** The hour (0–23) of `instant` in an IANA time zone. */
+export function localHour(instant: Date, timeZone: string): number {
+  const h = new Intl.DateTimeFormat("en-US", { timeZone, hour: "2-digit", hourCycle: "h23" }).format(instant);
+  return Number(h) % 24;
+}
+
+/** First day of the month containing `date`. */
+export function monthStart(date: IsoDate): IsoDate {
+  return `${date.slice(0, 7)}-01`;
+}

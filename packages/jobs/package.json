@@ -9,8 +9,7 @@
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
-    "migrate": "tsx src/bin/migrate.ts",
-    "worker": "tsx src/bin/worker.ts"
+    "migrate": "tsx src/bin/migrate.ts"
   },
   "dependencies": {
     "@verilo/db": "workspace:*",

@@ -7,6 +7,8 @@ import { createDb } from "@verilo/db";
 import { keyWrapperFromEnv } from "@verilo/auth";
 import { DisabledSender } from "@verilo/email";
 import { scannerFromEnv, storageFromEnv } from "@verilo/storage";
+import { MemoryQueue } from "@verilo/jobs";
+import { extractorFromEnv } from "@verilo/ai";
 import { runSeed } from "../src/server/seed";
 
 const appEnv = (process.env.APP_ENV ?? "local") as "local" | "test" | "staging" | "production";
@@ -34,7 +36,11 @@ try {
         baseUrl: process.env.APP_BASE_URL ?? "http://localhost:3000",
         inboundDomain: process.env.INBOUND_EMAIL_DOMAIN ?? "inbound.localhost",
         magicLinkEnabled: false,
+        inboundWebhookSecret: undefined,
       },
+      // The seed creates no timesheets or extractions; nothing is enqueued.
+      jobs: new MemoryQueue(),
+      extractor: extractorFromEnv({ EXTRACTOR: "disabled" }),
     },
     password,
   );

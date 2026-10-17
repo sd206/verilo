@@ -53,13 +53,21 @@ describe("row-level security coverage (R3)", () => {
     expect(rows.rows.map((r) => r.privilege_type)).toEqual(["INSERT", "SELECT"]);
   });
 
-  it("only the holiday calendar and auth housekeeping tables allow DELETE (no financial or master data)", async () => {
+  it("only replace-as-a-set tables and auth housekeeping allow DELETE (no financial or master data)", async () => {
     const rows = await withOwnerClient((c) =>
       c.query<{ table_name: string }>(
         `select table_name from information_schema.role_table_grants
          where grantee = 'verilo_app' and table_schema = 'public' and privilege_type = 'DELETE' order by table_name`,
       ),
     );
-    expect(rows.rows.map((r) => r.table_name)).toEqual(["firm_holiday", "rate_limit", "session", "verification_token"]);
+    expect(rows.rows.map((r) => r.table_name)).toEqual([
+      "evidence",
+      "firm_holiday",
+      "rate_limit",
+      "session",
+      "timesheet_check",
+      "timesheet_entry",
+      "verification_token",
+    ]);
   });
 });

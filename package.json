@@ -18,7 +18,7 @@
     "db:generate": "pnpm --filter @verilo/db generate",
     "db:migrate": "pnpm --filter @verilo/db migrate",
     "db:seed": "pnpm --filter @verilo/web seed",
-    "worker": "pnpm --filter @verilo/jobs worker"
+    "worker": "pnpm --filter @verilo/web worker"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",

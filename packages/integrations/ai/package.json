@@ -9,5 +9,16 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@google/genai": "2.24.0",
+    "@napi-rs/canvas": "1.0.9",
+    "@verilo/domain": "workspace:*",
+    "heic-convert": "2.1.0",
+    "pdfjs-dist": "6.3.289",
+    "sharp": "0.35.5",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/heic-convert": "2.1.1"
+  }
 }

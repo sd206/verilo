@@ -21,6 +21,8 @@ COPY tests/e2e/package.json tests/e2e/
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm --filter @verilo/web build && node scripts/bundle.mjs
+# Native and asset-carrying packages the worker bundle leaves external (dist/package.json).
+RUN cd dist && npm install --omit=dev --no-audit --no-fund --ignore-scripts=false
 
 # Distroless runtime: Node and glibc only — no shell, package manager or perl (the slim Debian
 # base carried critical perl CVEs, which the deploy scan blocks on). Same Debian 13 glibc as the

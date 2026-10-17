@@ -9,12 +9,14 @@
     "start": "node .next/standalone/apps/web/server.js",
     "typecheck": "tsc -p tsconfig.json",
     "postbuild": "node ../../scripts/prepare-standalone.mjs",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "worker": "tsx src/worker.ts"
   },
   "dependencies": {
     "@radix-ui/react-label": "2.1.17",
     "@radix-ui/react-slot": "1.5.0",
     "@tanstack/react-table": "8.21.3",
+    "@verilo/ai": "workspace:*",
     "@verilo/auth": "workspace:*",
     "@verilo/db": "workspace:*",
     "@verilo/domain": "workspace:*",
@@ -35,6 +37,7 @@
     "@tailwindcss/postcss": "4.3.3",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
+    "sharp": "0.35.5",
     "tailwindcss": "4.3.3"
   }
 }

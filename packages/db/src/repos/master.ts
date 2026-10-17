@@ -331,3 +331,15 @@ export async function insertPurchaseOrder(
   const [row] = await tx.insert(purchaseOrder).values({ ...p, firmId, createdBy: userId }).returning();
   return row!;
 }
+
+/** Full engagement rows (period generation and matching). */
+export async function listEngagementRows(
+  tx: Queryable,
+  firmId: string,
+  opts: { consultantId?: string; status?: EngagementRow["status"] } = {},
+): Promise<EngagementRow[]> {
+  const conds = [eq(engagement.firmId, firmId)];
+  if (opts.consultantId) conds.push(eq(engagement.consultantId, opts.consultantId));
+  if (opts.status) conds.push(eq(engagement.status, opts.status));
+  return tx.select().from(engagement).where(and(...conds)).orderBy(asc(engagement.startDate));
+}
