@@ -98,7 +98,7 @@ resource "google_kms_crypto_key_iam_member" "app" {
 
 # Secret Manager Secret Accessor on named secrets only.
 resource "google_secret_manager_secret_iam_member" "app" {
-  for_each = { for pair in setproduct(keys(local.app_accounts), ["DATABASE_URL", "AUTH_SECRET"]) : "${pair[0]}:${pair[1]}" => {
+  for_each = { for pair in setproduct(keys(local.app_accounts), ["DATABASE_URL", "AUTH_SECRET", "POSTMARK_INBOUND_WEBHOOK_SECRET"]) : "${pair[0]}:${pair[1]}" => {
     sa     = pair[0]
     secret = pair[1]
   } }

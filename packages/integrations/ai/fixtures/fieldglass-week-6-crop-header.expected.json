@@ -1,0 +1,48 @@
+{
+  "document_type": "VMS_TIMESHEET",
+  "vms_name": "SAP Fieldglass",
+  "consultant_name": null,
+  "worker_id": null,
+  "timesheet_id": null,
+  "period_start": null,
+  "period_end": null,
+  "daily_hours": [
+    {
+      "date": "2026-10-12",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-10-13",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-10-14",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-10-15",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-10-16",
+      "hours": 0,
+      "rate_kind": "REGULAR"
+    }
+  ],
+  "total_hours": 32,
+  "approval_status": "UNKNOWN",
+  "approver_name": null,
+  "approved_at": null,
+  "confidence": {
+    "overall": 1,
+    "period": 1,
+    "total_hours": 1,
+    "daily_hours": 1,
+    "approval_status": 1
+  },
+  "notes": null
+}

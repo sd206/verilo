@@ -14,7 +14,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const { auth, ctx } = await requireFirmPage();
   const firms = await listMyFirms(deps(), auth);
   const nav = [
-    { href: "/app", label: "Home", show: true },
+    { href: "/app", label: "Home", show: ctx.role !== "CONSULTANT" },
+    { href: "/app/timesheets", label: ctx.role === "CONSULTANT" ? "My timesheets" : "Timesheets", show: can(ctx.role, "SUBMIT_OWN_TIMESHEETS") || can(ctx.role, "REVIEW_TIMESHEETS") },
     { href: "/app/parties", label: "Parties", show: can(ctx.role, "VIEW_MASTER_DATA") },
     { href: "/app/consultants", label: "Consultants", show: can(ctx.role, "VIEW_MASTER_DATA") },
     { href: "/app/files", label: "Files", show: can(ctx.role, "UPLOAD_FILES") },

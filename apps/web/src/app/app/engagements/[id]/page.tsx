@@ -168,8 +168,21 @@ export default async function EngagementPage({ params }: { params: Promise<{ id:
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Timesheets</CardTitle>
-          <CardDescription>Timesheet capture and review arrive in the next release.</CardDescription>
+          <CardDescription>{d.timesheets.length ? "One per period since the engagement started." : "Timesheets appear once the engagement is active."}</CardDescription>
         </CardHeader>
+        {d.timesheets.length > 0 && (
+          <CardContent className="grid gap-1" data-testid="engagement-timesheets">
+            {d.timesheets.map((t) => (
+              <Link key={t.id} href={`/app/timesheets/${t.id}`} className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-muted">
+                <span>{t.period}</span>
+                <span className="flex items-center gap-3">
+                  <span className="tabular-nums text-muted-foreground">{t.totalHours} h</span>
+                  <StatusChip status={t.status} />
+                </span>
+              </Link>
+            ))}
+          </CardContent>
+        )}
       </Card>
     </div>
   );

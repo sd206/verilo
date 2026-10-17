@@ -1,0 +1,128 @@
+{
+  "document_type": "VMS_TIMESHEET",
+  "vms_name": "TimeTrack Pro",
+  "consultant_name": "Anita Desai",
+  "worker_id": "TT-5521",
+  "timesheet_id": null,
+  "period_start": "2026-08-01",
+  "period_end": "2026-08-31",
+  "daily_hours": [
+    {
+      "date": "2026-08-03",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-08-04",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-08-05",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-08-06",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-08-07",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-08-10",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-08-11",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-08-12",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-08-13",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-08-14",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-08-17",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-08-18",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-08-19",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-08-20",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-08-21",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-08-24",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-08-25",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-08-26",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-08-27",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-08-28",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-08-31",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    }
+  ],
+  "total_hours": 168,
+  "approval_status": "APPROVED",
+  "approver_name": "Jordan Ellis",
+  "approved_at": "2026-09-01",
+  "confidence": {
+    "overall": 1,
+    "period": 1,
+    "total_hours": 1,
+    "daily_hours": 1,
+    "approval_status": 1
+  },
+  "notes": null
+}

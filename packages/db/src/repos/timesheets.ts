@@ -283,9 +283,12 @@ export async function evidenceForDuplicateCheck(tx: Queryable, firmId: string, t
       consultantName: sql<string>`${consultant.firstName} || ' ' || ${consultant.lastName}`,
       periodStart: timesheet.periodStart,
       periodEnd: timesheet.periodEnd,
+      extractionStatus: extraction.status,
+      extractionResult: extraction.resultJson,
     })
     .from(evidence)
     .innerJoin(file, eq(file.id, evidence.fileId))
+    .leftJoin(extraction, eq(extraction.id, evidence.extractionId))
     .innerJoin(timesheet, eq(timesheet.id, evidence.timesheetId))
     .innerJoin(engagement, eq(engagement.id, timesheet.engagementId))
     .innerJoin(consultant, eq(consultant.id, engagement.consultantId))

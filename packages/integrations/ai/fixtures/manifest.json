@@ -1,0 +1,457 @@
+[
+  {
+    "name": "fieldglass-week-1",
+    "file": "fieldglass-week-1.png",
+    "clear": true,
+    "template": "fieldglass",
+    "variant": "clean",
+    "notes": "",
+    "hints": {
+      "consultantName": "Ravi Kumar",
+      "periodStart": "2026-09-07",
+      "periodEnd": "2026-09-13"
+    }
+  },
+  {
+    "name": "fieldglass-week-2",
+    "file": "fieldglass-week-2.png",
+    "clear": true,
+    "template": "fieldglass",
+    "variant": "clean",
+    "notes": "",
+    "hints": {
+      "consultantName": "Meera Shah",
+      "periodStart": "2026-09-14",
+      "periodEnd": "2026-09-20"
+    }
+  },
+  {
+    "name": "fieldglass-week-3",
+    "file": "fieldglass-week-3.png",
+    "clear": true,
+    "template": "fieldglass",
+    "variant": "clean",
+    "notes": "overtime rows",
+    "hints": {
+      "consultantName": "Daniel Ortiz",
+      "periodStart": "2026-09-21",
+      "periodEnd": "2026-09-27"
+    }
+  },
+  {
+    "name": "fieldglass-week-4",
+    "file": "fieldglass-week-4.png",
+    "clear": true,
+    "template": "fieldglass",
+    "variant": "clean",
+    "notes": "not yet approved",
+    "hints": {
+      "consultantName": "Ravi Kumar",
+      "periodStart": "2026-09-28",
+      "periodEnd": "2026-10-04"
+    }
+  },
+  {
+    "name": "fieldglass-week-5",
+    "file": "fieldglass-week-5.png",
+    "clear": true,
+    "template": "fieldglass",
+    "variant": "clean",
+    "notes": "",
+    "hints": {
+      "consultantName": "Meera Shah",
+      "periodStart": "2026-10-05",
+      "periodEnd": "2026-10-11"
+    }
+  },
+  {
+    "name": "fieldglass-week-6",
+    "file": "fieldglass-week-6.png",
+    "clear": true,
+    "template": "fieldglass",
+    "variant": "clean",
+    "notes": "a day off",
+    "hints": {
+      "consultantName": "Daniel Ortiz",
+      "periodStart": "2026-10-12",
+      "periodEnd": "2026-10-18"
+    }
+  },
+  {
+    "name": "fieldglass-week-7",
+    "file": "fieldglass-week-7.png",
+    "clear": true,
+    "template": "fieldglass",
+    "variant": "clean",
+    "notes": "",
+    "hints": {
+      "consultantName": "Ravi Kumar",
+      "periodStart": "2026-10-19",
+      "periodEnd": "2026-10-25"
+    }
+  },
+  {
+    "name": "fieldglass-week-8",
+    "file": "fieldglass-week-8.png",
+    "clear": true,
+    "template": "fieldglass",
+    "variant": "clean",
+    "notes": "rejected",
+    "hints": {
+      "consultantName": "Meera Shah",
+      "periodStart": "2026-10-26",
+      "periodEnd": "2026-11-01"
+    }
+  },
+  {
+    "name": "beeline-week-1",
+    "file": "beeline-week-1.png",
+    "clear": true,
+    "template": "beeline",
+    "variant": "clean",
+    "notes": "",
+    "hints": {
+      "consultantName": "Priya Nair",
+      "periodStart": "2026-09-14",
+      "periodEnd": "2026-09-20"
+    }
+  },
+  {
+    "name": "beeline-week-2",
+    "file": "beeline-week-2.png",
+    "clear": true,
+    "template": "beeline",
+    "variant": "clean",
+    "notes": "7:30 days",
+    "hints": {
+      "consultantName": "Wei Chen",
+      "periodStart": "2026-09-21",
+      "periodEnd": "2026-09-27"
+    }
+  },
+  {
+    "name": "beeline-week-3",
+    "file": "beeline-week-3.png",
+    "clear": true,
+    "template": "beeline",
+    "variant": "clean",
+    "notes": "",
+    "hints": {
+      "consultantName": "Priya Nair",
+      "periodStart": "2026-10-05",
+      "periodEnd": "2026-10-11"
+    }
+  },
+  {
+    "name": "beeline-week-4",
+    "file": "beeline-week-4.png",
+    "clear": true,
+    "template": "beeline",
+    "variant": "clean",
+    "notes": "overtime as +H:MM",
+    "hints": {
+      "consultantName": "Wei Chen",
+      "periodStart": "2026-10-12",
+      "periodEnd": "2026-10-18"
+    }
+  },
+  {
+    "name": "beeline-week-5",
+    "file": "beeline-week-5.png",
+    "clear": true,
+    "template": "beeline",
+    "variant": "clean",
+    "notes": "not yet approved",
+    "hints": {
+      "consultantName": "Priya Nair",
+      "periodStart": "2026-10-19",
+      "periodEnd": "2026-10-25"
+    }
+  },
+  {
+    "name": "beeline-week-6",
+    "file": "beeline-week-6.png",
+    "clear": true,
+    "template": "beeline",
+    "variant": "clean",
+    "notes": "",
+    "hints": {
+      "consultantName": "Wei Chen",
+      "periodStart": "2026-10-26",
+      "periodEnd": "2026-11-01"
+    }
+  },
+  {
+    "name": "calendar-month-1",
+    "file": "calendar-month-1.png",
+    "clear": true,
+    "template": "calendar",
+    "variant": "clean",
+    "notes": "",
+    "hints": {
+      "consultantName": "Anita Desai",
+      "periodStart": "2026-08-01",
+      "periodEnd": "2026-08-31"
+    }
+  },
+  {
+    "name": "calendar-month-2",
+    "file": "calendar-month-2.png",
+    "clear": true,
+    "template": "calendar",
+    "variant": "clean",
+    "notes": "",
+    "hints": {
+      "consultantName": "Tomás Rivera",
+      "periodStart": "2026-09-01",
+      "periodEnd": "2026-09-30"
+    }
+  },
+  {
+    "name": "calendar-month-3",
+    "file": "calendar-month-3.png",
+    "clear": true,
+    "template": "calendar",
+    "variant": "clean",
+    "notes": "",
+    "hints": {
+      "consultantName": "Anita Desai",
+      "periodStart": "2026-10-01",
+      "periodEnd": "2026-10-31"
+    }
+  },
+  {
+    "name": "calendar-month-4",
+    "file": "calendar-month-4.png",
+    "clear": true,
+    "template": "calendar",
+    "variant": "clean",
+    "notes": "holiday days off",
+    "hints": {
+      "consultantName": "Tomás Rivera",
+      "periodStart": "2026-11-01",
+      "periodEnd": "2026-11-30"
+    }
+  },
+  {
+    "name": "calendar-month-5",
+    "file": "calendar-month-5.png",
+    "clear": true,
+    "template": "calendar",
+    "variant": "clean",
+    "notes": "",
+    "hints": {
+      "consultantName": "Ravi Kumar",
+      "periodStart": "2026-09-01",
+      "periodEnd": "2026-09-30"
+    }
+  },
+  {
+    "name": "calendar-month-6",
+    "file": "calendar-month-6.png",
+    "clear": true,
+    "template": "calendar",
+    "variant": "clean",
+    "notes": "",
+    "hints": {
+      "consultantName": "Ravi Kumar",
+      "periodStart": "2026-10-01",
+      "periodEnd": "2026-10-31"
+    }
+  },
+  {
+    "name": "calendar-month-7",
+    "file": "calendar-month-7.png",
+    "clear": true,
+    "template": "calendar",
+    "variant": "clean",
+    "notes": "one weekday off",
+    "hints": {
+      "consultantName": "Ravi Kumar",
+      "periodStart": "2026-10-01",
+      "periodEnd": "2026-10-31"
+    }
+  },
+  {
+    "name": "email-approval-1",
+    "file": "email-approval-1.png",
+    "clear": true,
+    "template": "email",
+    "variant": "clean",
+    "notes": "",
+    "hints": {
+      "consultantName": "Ravi Kumar",
+      "periodStart": "2026-09-01",
+      "periodEnd": "2026-09-30"
+    }
+  },
+  {
+    "name": "email-approval-2",
+    "file": "email-approval-2.png",
+    "clear": true,
+    "template": "email",
+    "variant": "clean",
+    "notes": "",
+    "hints": {
+      "consultantName": "Meera Shah",
+      "periodStart": "2026-10-01",
+      "periodEnd": "2026-10-31"
+    }
+  },
+  {
+    "name": "email-approval-3",
+    "file": "email-approval-3.png",
+    "clear": true,
+    "template": "email",
+    "variant": "clean",
+    "notes": "",
+    "hints": {
+      "consultantName": "Daniel Ortiz",
+      "periodStart": "2026-10-05",
+      "periodEnd": "2026-10-11"
+    }
+  },
+  {
+    "name": "email-approval-4",
+    "file": "email-approval-4.png",
+    "clear": true,
+    "template": "email",
+    "variant": "clean",
+    "notes": "email that doesn't approve",
+    "hints": {
+      "consultantName": "Grace Okafor",
+      "periodStart": "2026-10-01",
+      "periodEnd": "2026-10-31"
+    }
+  },
+  {
+    "name": "fieldglass-week-1-phone",
+    "file": "fieldglass-week-1-phone.jpg",
+    "clear": false,
+    "template": "fieldglass",
+    "variant": "phone",
+    "notes": "phone photo of a monitor: tilted, soft, darker",
+    "hints": {
+      "consultantName": "Ravi Kumar",
+      "periodStart": "2026-09-07",
+      "periodEnd": "2026-09-13"
+    }
+  },
+  {
+    "name": "beeline-week-1-phone",
+    "file": "beeline-week-1-phone.jpg",
+    "clear": false,
+    "template": "beeline",
+    "variant": "phone",
+    "notes": "phone photo",
+    "hints": {
+      "consultantName": "Priya Nair",
+      "periodStart": "2026-09-14",
+      "periodEnd": "2026-09-20"
+    }
+  },
+  {
+    "name": "calendar-month-3-phone",
+    "file": "calendar-month-3-phone.jpg",
+    "clear": false,
+    "template": "calendar",
+    "variant": "phone",
+    "notes": "phone photo of a monthly grid",
+    "hints": {
+      "consultantName": "Anita Desai",
+      "periodStart": "2026-10-01",
+      "periodEnd": "2026-10-31"
+    }
+  },
+  {
+    "name": "fieldglass-week-5-phone",
+    "file": "fieldglass-week-5-phone.jpg",
+    "clear": false,
+    "template": "fieldglass",
+    "variant": "phone",
+    "notes": "phone photo",
+    "hints": {
+      "consultantName": "Meera Shah",
+      "periodStart": "2026-10-05",
+      "periodEnd": "2026-10-11"
+    }
+  },
+  {
+    "name": "fieldglass-week-2-lowres",
+    "file": "fieldglass-week-2-lowres.jpg",
+    "clear": false,
+    "template": "fieldglass",
+    "variant": "lowres",
+    "notes": "downscaled screenshot",
+    "hints": {
+      "consultantName": "Meera Shah",
+      "periodStart": "2026-09-14",
+      "periodEnd": "2026-09-20"
+    }
+  },
+  {
+    "name": "calendar-month-2-lowres",
+    "file": "calendar-month-2-lowres.jpg",
+    "clear": false,
+    "template": "calendar",
+    "variant": "lowres",
+    "notes": "downscaled screenshot",
+    "hints": {
+      "consultantName": "Tomás Rivera",
+      "periodStart": "2026-09-01",
+      "periodEnd": "2026-09-30"
+    }
+  },
+  {
+    "name": "fieldglass-week-6-crop-header",
+    "file": "fieldglass-week-6-crop-header.png",
+    "clear": false,
+    "template": "fieldglass",
+    "variant": "crop-header",
+    "notes": "header cropped off: no name, period or status",
+    "hints": {
+      "consultantName": "Daniel Ortiz",
+      "periodStart": "2026-10-12",
+      "periodEnd": "2026-10-18"
+    }
+  },
+  {
+    "name": "beeline-week-3-crop-total",
+    "file": "beeline-week-3-crop-total.png",
+    "clear": false,
+    "template": "beeline",
+    "variant": "crop-total",
+    "notes": "total cropped off",
+    "hints": {
+      "consultantName": "Priya Nair",
+      "periodStart": "2026-10-05",
+      "periodEnd": "2026-10-11"
+    }
+  },
+  {
+    "name": "fieldglass-week-4-pdf",
+    "file": "fieldglass-week-4-pdf.pdf",
+    "clear": true,
+    "template": "fieldglass",
+    "variant": "pdf",
+    "notes": "PDF export",
+    "hints": {
+      "consultantName": "Ravi Kumar",
+      "periodStart": "2026-09-28",
+      "periodEnd": "2026-10-04"
+    }
+  },
+  {
+    "name": "calendar-month-5-pdf",
+    "file": "calendar-month-5-pdf.pdf",
+    "clear": true,
+    "template": "calendar",
+    "variant": "pdf",
+    "notes": "PDF export",
+    "hints": {
+      "consultantName": "Ravi Kumar",
+      "periodStart": "2026-09-01",
+      "periodEnd": "2026-09-30"
+    }
+  }
+]

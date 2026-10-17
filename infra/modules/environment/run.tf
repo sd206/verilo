@@ -17,13 +17,14 @@ locals {
     CLAMAV_URL           = google_cloud_run_v2_service.clamav.uri
     CLAMAV_AUTH          = "google"
     VERTEX_MODEL         = var.vertex_model
+    VERTEX_LOCATION      = var.vertex_location != "" ? var.vertex_location : var.region
     QBO_ENVIRONMENT      = var.qbo_environment
     LOG_LEVEL            = var.log_level
     INBOUND_EMAIL_DOMAIN = var.inbound_email_domain != "" ? var.inbound_email_domain : "inbound.${var.env}.verilo.invalid"
     EMAIL_FROM           = var.email_from
     MAGIC_LINK_ENABLED   = var.magic_link_enabled ? "1" : "0"
   }
-  app_secrets = ["DATABASE_URL", "AUTH_SECRET"]
+  app_secrets = ["DATABASE_URL", "AUTH_SECRET", "POSTMARK_INBOUND_WEBHOOK_SECRET"]
 }
 
 # --- clamav: internal ingress only; only web and worker may invoke ---------------------------

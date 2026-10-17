@@ -1,0 +1,58 @@
+{
+  "document_type": "VMS_TIMESHEET",
+  "vms_name": "SAP Fieldglass",
+  "consultant_name": "Daniel Ortiz",
+  "worker_id": "FG-W-19876",
+  "timesheet_id": "TS-100074",
+  "period_start": "2026-09-21",
+  "period_end": "2026-09-27",
+  "daily_hours": [
+    {
+      "date": "2026-09-21",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-09-22",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-09-23",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-09-23",
+      "hours": 2,
+      "rate_kind": "OVERTIME"
+    },
+    {
+      "date": "2026-09-24",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-09-24",
+      "hours": 1.5,
+      "rate_kind": "OVERTIME"
+    },
+    {
+      "date": "2026-09-25",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    }
+  ],
+  "total_hours": 43.5,
+  "approval_status": "APPROVED",
+  "approver_name": "Jordan Ellis",
+  "approved_at": "2026-09-28",
+  "confidence": {
+    "overall": 1,
+    "period": 1,
+    "total_hours": 1,
+    "daily_hours": 1,
+    "approval_status": 1
+  },
+  "notes": null
+}

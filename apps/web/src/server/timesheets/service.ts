@@ -224,6 +224,7 @@ export async function loadCheckInput(tx: Queryable, firmId: string, ts: Timeshee
         sha256: o.sha256,
         perceptualHash: o.perceptualHash,
         label: `${o.consultantName}, ${periodLabel({ start: o.periodStart, end: o.periodEnd })}`,
+        extracted: o.extractionStatus === "DONE" ? extractionResultOf(o.extractionResult) : null,
       })),
       rates: (await listRates(tx, firmId, e.id)).map(toRate),
       holidays: holidays.map((h) => ({ date: h.holidayDate, name: h.name })),

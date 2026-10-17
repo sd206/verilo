@@ -16,11 +16,33 @@ const TONES: Record<string, "neutral" | "success" | "warning" | "danger" | "prim
   EXPIRED: "danger",
   INFECTED: "danger",
   DISABLED: "danger",
+  // Timesheets (6.1)
+  NOT_STARTED: "neutral",
+  SUBMITTED: "primary",
+  NEEDS_REVIEW: "warning",
+  VERIFIED: "success",
+  RETURNED: "danger",
+  INVOICED: "primary",
+  // Extraction and intake
+  QUEUED: "warning",
+  RUNNING: "warning",
+  DONE: "success",
+  FAILED: "danger",
+  UNMATCHED: "warning",
+  PROCESSED: "success",
+  REJECTED: "danger",
+  RECEIVED: "neutral",
+  APPROVED: "success",
+  UNKNOWN: "neutral",
 };
 
 const LABELS: Record<string, string> = {
   NO_EXPIRY: "No expiry",
   EXPIRING: "Expiring soon",
+  QUEUED: "Reading",
+  RUNNING: "Reading",
+  DONE: "Read",
+  FAILED: "Couldn't read",
 };
 
 export function StatusChip({ status }: { status: string }) {

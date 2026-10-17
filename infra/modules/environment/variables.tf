@@ -93,7 +93,13 @@ variable "qbo_environment" {
 }
 
 variable "vertex_model" {
-  description = "Gemini model on Vertex AI (open decision 7); set in M2."
+  description = "Gemini model on Vertex AI for extraction (open decision 7; chosen in M2). Empty turns AI reads off."
+  type        = string
+  default     = "gemini-2.5-flash"
+}
+
+variable "vertex_location" {
+  description = "Vertex AI location for Gemini calls. Empty means the environment's region (24.9: same project and region)."
   type        = string
   default     = ""
 }

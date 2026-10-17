@@ -1,0 +1,48 @@
+{
+  "document_type": "VMS_TIMESHEET",
+  "vms_name": "SAP Fieldglass",
+  "consultant_name": "Meera Shah",
+  "worker_id": "FG-W-20533",
+  "timesheet_id": "TS-100259",
+  "period_start": "2026-10-26",
+  "period_end": "2026-11-01",
+  "daily_hours": [
+    {
+      "date": "2026-10-26",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-10-27",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-10-28",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-10-29",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-10-30",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    }
+  ],
+  "total_hours": 40,
+  "approval_status": "REJECTED",
+  "approver_name": null,
+  "approved_at": null,
+  "confidence": {
+    "overall": 1,
+    "period": 1,
+    "total_hours": 1,
+    "daily_hours": 1,
+    "approval_status": 1
+  },
+  "notes": null
+}

@@ -94,6 +94,8 @@ export interface OtherEvidence {
   perceptualHash: string | null;
   /** e.g. "Meera Shah, Oct 2026" */
   label: string;
+  /** What was read from it (DONE extractions only). */
+  extracted: ExtractedTimesheet | null;
 }
 
 export interface TimesheetCheckInput {
@@ -313,13 +315,16 @@ export function runTimesheetChecks(i: TimesheetCheckInput): CheckResult[] {
     if (low) add("LOW_CONFIDENCE", "Parts of the document were hard to read. Compare the hours with the image.");
   }
 
-  // DUPLICATE_EVIDENCE
+  // DUPLICATE_EVIDENCE: the same bytes, or a near-identical image whose content also matches
+  // (approved M2 refinement: same-VMS screenshots of different weeks hash within a few bits).
   const dupes: string[] = [];
   for (const e of i.evidence) {
+    const mine = e.extraction?.status === "DONE" ? e.extraction.result : null;
     for (const o of i.otherEvidence) {
       const sameSha = !!e.sha256 && e.sha256 === o.sha256;
       const dist = e.perceptualHash && o.perceptualHash ? hammingDistanceHex(e.perceptualHash, o.perceptualHash) : null;
-      if (sameSha || (dist !== null && dist <= PHASH_DUPLICATE_DISTANCE)) dupes.push(o.label);
+      const similar = dist !== null && dist <= PHASH_DUPLICATE_DISTANCE && sameContent(mine, o.extracted);
+      if (sameSha || similar) dupes.push(o.label);
     }
   }
   if (dupes.length) add("DUPLICATE_EVIDENCE", `The same document is already attached to another timesheet: ${list([...new Set(dupes)])}.`);
@@ -383,6 +388,21 @@ export function runTimesheetChecks(i: TimesheetCheckInput): CheckResult[] {
 
   const sevOrder = { BLOCK: 0, WARN: 1, INFO: 2 } as const;
   return out.sort((a, b) => sevOrder[a.severity] - sevOrder[b.severity] || CHECK_CODES.indexOf(a.code) - CHECK_CODES.indexOf(b.code));
+}
+
+/**
+ * Two reads describe the same document: the same VMS timesheet id when both show one; otherwise
+ * the same consultant (similarity ≥ 0.85), period and total. Unread content can't be confirmed.
+ */
+export function sameContent(a: ExtractedTimesheet | null, b: ExtractedTimesheet | null): boolean {
+  if (!a || !b) return false;
+  if (a.timesheet_id && b.timesheet_id) return a.timesheet_id.trim().toLowerCase() === b.timesheet_id.trim().toLowerCase();
+  const pa = documentPeriod(a);
+  const pb = documentPeriod(b);
+  const samePeriod = !!pa && !!pb && pa.start === pb.start && pa.end === pb.end;
+  const sameTotal = a.total_hours !== null && b.total_hours !== null && hoursFromNumber(a.total_hours) === hoursFromNumber(b.total_hours);
+  const sameName = !!a.consultant_name && !!b.consultant_name && nameSimilarity(a.consultant_name, b.consultant_name) >= 0.85;
+  return samePeriod && sameTotal && sameName;
 }
 
 /** Checks overlap helper for callers choosing a PO. */

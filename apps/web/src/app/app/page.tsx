@@ -3,11 +3,14 @@ import { deps } from "@/server/deps";
 import { requireFirmPage } from "@/server/context";
 import { getFirmSummary } from "@/server/handlers/home";
 import { ROLE_LABELS } from "@/lib/utils";
+import { redirect } from "next/navigation";
 
 export const metadata = { title: "Home" };
 
 export default async function AppHome() {
   const { ctx } = await requireFirmPage();
+  // Consultants land on their timesheets (13.1).
+  if (ctx.role === "CONSULTANT") redirect("/app/timesheets");
   const firm = await getFirmSummary(deps(), ctx);
   return (
     <div className="grid gap-6">
@@ -23,7 +26,7 @@ export default async function AppHome() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Inbound email addresses</CardTitle>
-            <CardDescription>Timesheet and vendor-invoice intake starts in a later release.</CardDescription>
+            <CardDescription>Consultants can email approved timesheet screenshots to the timesheet address. Vendor-invoice intake starts with vendor bills.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2 text-sm">
             <div>

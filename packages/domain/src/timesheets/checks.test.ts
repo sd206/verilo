@@ -296,19 +296,35 @@ describe("runTimesheetChecks (7.6)", () => {
   describe("DUPLICATE_EVIDENCE", () => {
     it("T4: the same screenshot (sha256) already on another timesheet", () => {
       const c = find(
-        input({ otherEvidence: [{ timesheetId: "ts-meera", fileId: "file-9", sha256: "a".repeat(64), perceptualHash: null, label: "Meera Shah, Oct 2026" }] }),
+        input({ otherEvidence: [{ timesheetId: "ts-meera", fileId: "file-9", sha256: "a".repeat(64), perceptualHash: null, label: "Meera Shah, Oct 2026", extracted: null }] }),
         "DUPLICATE_EVIDENCE",
       );
       expect(c?.severity).toBe("BLOCK");
       expect(c?.message).toContain("Meera Shah, Oct 2026");
     });
-    it("a near-identical image (perceptual-hash distance ≤ 5)", () => {
-      // ffff0000ffff0000 vs fffe0000ffff000f: 1 + 4 = 5 bits differ.
-      const other = { timesheetId: "ts-x", fileId: "f-x", sha256: "c".repeat(64), perceptualHash: "fffe0000ffff000f", label: "x" };
+    // Image similarity alone isn't enough: screenshots from the same VMS share a layout and hash
+    // within a few bits of each other. A near-identical image counts only when its content matches.
+    const near = "fffe0000ffff000f"; // 1 + 4 = 5 bits from the evidence's ffff0000ffff0000
+    it("a near-identical image (distance ≤ 5) with the same content: same VMS timesheet id", () => {
+      const other = { timesheetId: "ts-x", fileId: "f-x", sha256: "c".repeat(64), perceptualHash: near, label: "x", extracted: extracted({ timesheet_id: "FG-1", consultant_name: "Someone Else" }) };
+      const i = input({ otherEvidence: [other], evidence: [ev({}, extracted({ timesheet_id: "FG-1" }))] });
+      expect(codes(i)).toContain("DUPLICATE_EVIDENCE");
+    });
+    it("a near-identical image with the same name, period and total", () => {
+      const other = { timesheetId: "ts-x", fileId: "f-x", sha256: "c".repeat(64), perceptualHash: near, label: "x", extracted: extracted({ consultant_name: "KUMAR, Ravi" }) };
       expect(codes(input({ otherEvidence: [other] }))).toContain("DUPLICATE_EVIDENCE");
     });
-    it("distance 6 is not a duplicate", () => {
-      const other = { timesheetId: "ts-x", fileId: "f-x", sha256: "c".repeat(64), perceptualHash: "fffc0000ffff000f", label: "x" };
+    it("a near-identical image with different content (another week, same VMS layout) is not a duplicate", () => {
+      const otherWeek = extracted({ period_start: "2026-09-01", period_end: "2026-09-30", total_hours: 168 });
+      const other = { timesheetId: "ts-x", fileId: "f-x", sha256: "c".repeat(64), perceptualHash: "ffff0000ffff0000", label: "x", extracted: otherWeek };
+      expect(codes(input({ otherEvidence: [other] }))).not.toContain("DUPLICATE_EVIDENCE");
+    });
+    it("a near-identical image whose content wasn't read can't be confirmed, so it isn't flagged", () => {
+      const other = { timesheetId: "ts-x", fileId: "f-x", sha256: "c".repeat(64), perceptualHash: near, label: "x", extracted: null };
+      expect(codes(input({ otherEvidence: [other] }))).not.toContain("DUPLICATE_EVIDENCE");
+    });
+    it("distance 6 is not a duplicate even with the same content", () => {
+      const other = { timesheetId: "ts-x", fileId: "f-x", sha256: "c".repeat(64), perceptualHash: "fffc0000ffff000f", label: "x", extracted: extracted() };
       expect(codes(input({ otherEvidence: [other] }))).not.toContain("DUPLICATE_EVIDENCE");
     });
     it("the same file on the same timesheet is not a duplicate of itself", () => {

@@ -1,0 +1,48 @@
+{
+  "document_type": "VMS_TIMESHEET",
+  "vms_name": "SAP Fieldglass",
+  "consultant_name": "Ravi Kumar",
+  "worker_id": "FG-W-20417",
+  "timesheet_id": "TS-100222",
+  "period_start": "2026-10-19",
+  "period_end": "2026-10-25",
+  "daily_hours": [
+    {
+      "date": "2026-10-19",
+      "hours": 9,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-10-20",
+      "hours": 9,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-10-21",
+      "hours": 9,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-10-22",
+      "hours": 9,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-10-23",
+      "hours": 9,
+      "rate_kind": "REGULAR"
+    }
+  ],
+  "total_hours": 45,
+  "approval_status": "APPROVED",
+  "approver_name": "Jordan Ellis",
+  "approved_at": "2026-10-26",
+  "confidence": {
+    "overall": 1,
+    "period": 1,
+    "total_hours": 1,
+    "daily_hours": 1,
+    "approval_status": 1
+  },
+  "notes": null
+}

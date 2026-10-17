@@ -1,0 +1,128 @@
+{
+  "document_type": "VMS_TIMESHEET",
+  "vms_name": "TimeTrack Pro",
+  "consultant_name": "Tomás Rivera",
+  "worker_id": "TT-5602",
+  "timesheet_id": null,
+  "period_start": "2026-11-01",
+  "period_end": "2026-11-30",
+  "daily_hours": [
+    {
+      "date": "2026-11-02",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-11-03",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-11-04",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-11-05",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-11-06",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-11-09",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-11-10",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-11-11",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-11-12",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-11-13",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-11-16",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-11-17",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-11-18",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-11-19",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-11-20",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-11-23",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-11-24",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-11-25",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-11-26",
+      "hours": 0,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-11-27",
+      "hours": 0,
+      "rate_kind": "UNKNOWN"
+    },
+    {
+      "date": "2026-11-30",
+      "hours": 8,
+      "rate_kind": "UNKNOWN"
+    }
+  ],
+  "total_hours": 152,
+  "approval_status": "APPROVED",
+  "approver_name": "Jordan Ellis",
+  "approved_at": "2026-12-01",
+  "confidence": {
+    "overall": 1,
+    "period": 1,
+    "total_hours": 1,
+    "daily_hours": 1,
+    "approval_status": 1
+  },
+  "notes": null
+}

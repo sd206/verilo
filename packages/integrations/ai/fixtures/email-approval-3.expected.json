@@ -1,0 +1,22 @@
+{
+  "document_type": "EMAIL_APPROVAL",
+  "vms_name": null,
+  "consultant_name": "Daniel Ortiz",
+  "worker_id": null,
+  "timesheet_id": null,
+  "period_start": "2026-10-05",
+  "period_end": "2026-10-11",
+  "daily_hours": [],
+  "total_hours": 40,
+  "approval_status": "APPROVED",
+  "approver_name": "Jordan Ellis",
+  "approved_at": "2026-10-13",
+  "confidence": {
+    "overall": 1,
+    "period": 1,
+    "total_hours": 1,
+    "daily_hours": 1,
+    "approval_status": 1
+  },
+  "notes": null
+}

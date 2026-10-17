@@ -40,7 +40,26 @@ export async function signIn(page: Page, email: string, totpSecret?: string) {
     await page.getByLabel("6-digit code").fill(generateTotp(totpSecret));
     await page.getByRole("button", { name: "Continue" }).click();
   }
-  await expect(page).toHaveURL(/\/app$/);
+  // Consultants land on their timesheets (13.1).
+  await expect(page).toHaveURL(/\/app(\/timesheets)?$/);
+}
+
+/** The invite link from the on-screen fallback, or from Mailpit when email is on. */
+export async function inviteLink(page: Page, email: string): Promise<string> {
+  const onScreen = page.getByTestId("invite-link");
+  if (await onScreen.isVisible().catch(() => false)) return (await onScreen.textContent())!.trim();
+  const mailpit = process.env.MAILPIT_URL;
+  expect(mailpit, "no on-screen link and no MAILPIT_URL").toBeTruthy();
+  for (let i = 0; i < 30; i++) {
+    const res = await fetch(`${mailpit}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`);
+    const body = (await res.json()) as { messages: { ID: string }[] };
+    if (body.messages.length) {
+      const msg = (await (await fetch(`${mailpit}/api/v1/message/${body.messages[0]!.ID}`)).json()) as { Text: string };
+      return msg.Text.match(/https?:\/\/\S+\/invite\/\S+/)![0];
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error(`no invite email for ${email}`);
 }
 
 export async function signOut(page: Page) {

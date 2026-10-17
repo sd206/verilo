@@ -6,6 +6,15 @@ import { defineConfig, devices } from "@playwright/test";
  */
 const executablePath = process.env.PW_CHROMIUM_PATH || undefined;
 const port = Number(process.env.E2E_PORT ?? 3100);
+const workerPort = Number(process.env.E2E_WORKER_PORT ?? 3199);
+const appEnv = {
+  ...process.env,
+  APP_BASE_URL: `http://localhost:${port}`,
+  RATE_LIMIT_DISABLED: "1",
+  // Answers AI reads from the fixture set by file hash (no Vertex AI in tests).
+  EXTRACTOR: "fixture",
+  POSTMARK_INBOUND_WEBHOOK_SECRET: process.env.POSTMARK_INBOUND_WEBHOOK_SECRET ?? "e2e-inbound-webhook-secret",
+} as Record<string, string>;
 
 export default defineConfig({
   testDir: "./specs",
@@ -32,11 +41,21 @@ export default defineConfig({
   ],
   webServer: process.env.SMOKE_BASE_URL
     ? undefined
-    : {
-        command: "pnpm --filter @verilo/web start",
-        url: `http://localhost:${port}/api/health`,
-        reuseExistingServer: !process.env.CI,
-        timeout: 120_000,
-        env: { ...process.env, PORT: String(port), HOSTNAME: "127.0.0.1", APP_BASE_URL: `http://localhost:${port}`, RATE_LIMIT_DISABLED: "1" } as Record<string, string>,
-      },
+    : [
+        {
+          command: "pnpm --filter @verilo/web start",
+          url: `http://localhost:${port}/api/health`,
+          reuseExistingServer: !process.env.CI,
+          timeout: 120_000,
+          env: { ...appEnv, PORT: String(port), HOSTNAME: "127.0.0.1" },
+        },
+        {
+          // The worker runs the section 14 jobs (extraction, email intake, checks).
+          command: "pnpm --filter @verilo/web worker",
+          url: `http://127.0.0.1:${workerPort}`,
+          reuseExistingServer: !process.env.CI,
+          timeout: 120_000,
+          env: { ...appEnv, APP_ROLE: "worker", WORKER_HEALTH_PORT: String(workerPort) },
+        },
+      ],
 });

@@ -1,0 +1,53 @@
+{
+  "document_type": "VMS_TIMESHEET",
+  "vms_name": "Beeline",
+  "consultant_name": "Wei Chen",
+  "worker_id": "BL-88301",
+  "timesheet_id": null,
+  "period_start": "2026-10-12",
+  "period_end": "2026-10-18",
+  "daily_hours": [
+    {
+      "date": "2026-10-12",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-10-13",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-10-13",
+      "hours": 2.25,
+      "rate_kind": "OVERTIME"
+    },
+    {
+      "date": "2026-10-14",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-10-15",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-10-16",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    }
+  ],
+  "total_hours": 42.25,
+  "approval_status": "APPROVED",
+  "approver_name": "Jordan Ellis",
+  "approved_at": "2026-10-19",
+  "confidence": {
+    "overall": 1,
+    "period": 1,
+    "total_hours": 1,
+    "daily_hours": 1,
+    "approval_status": 1
+  },
+  "notes": null
+}

@@ -3,26 +3,8 @@
  * MFA enforced for Finance, and a file upload that is stored and scanned CLEAN.
  * Invite links are taken from Mailpit when it runs, otherwise from the on-screen fallback.
  */
-import { expect, test, type Page } from "@playwright/test";
-import { enrolMfa, PASSWORD, signIn, signOut, signUpFirm, unique, uploadPdf } from "../helpers";
-
-const MAILPIT = process.env.MAILPIT_URL;
-
-async function inviteLink(page: Page, email: string): Promise<string> {
-  const onScreen = page.getByTestId("invite-link");
-  if (await onScreen.isVisible().catch(() => false)) return (await onScreen.textContent())!.trim();
-  expect(MAILPIT, "no on-screen link and no MAILPIT_URL").toBeTruthy();
-  for (let i = 0; i < 30; i++) {
-    const res = await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:${email}`)}`);
-    const body = (await res.json()) as { messages: { ID: string }[] };
-    if (body.messages.length) {
-      const msg = (await (await fetch(`${MAILPIT}/api/v1/message/${body.messages[0]!.ID}`)).json()) as { Text: string };
-      return msg.Text.match(/https?:\/\/\S+\/invite\/\S+/)![0];
-    }
-    await new Promise((r) => setTimeout(r, 500));
-  }
-  throw new Error(`no invite email for ${email}`);
-}
+import { expect, test } from "@playwright/test";
+import { enrolMfa, inviteLink, PASSWORD, signIn, signOut, signUpFirm, unique, uploadPdf } from "../helpers";
 
 test("M0: sign up, MFA, invite all four roles, upload a clean file", async ({ page, browser }) => {
   const adminEmail = unique("admin");
@@ -90,7 +72,7 @@ test("M0: sign up, MFA, invite all four roles, upload a clean file", async ({ pa
   await consultant.getByLabel("Your name").fill("Cam Consultant");
   await consultant.getByLabel("Choose a password").fill(PASSWORD);
   await consultant.getByRole("button", { name: "Accept invitation" }).click();
-  await expect(consultant).toHaveURL(/\/app$/);
+  await expect(consultant).toHaveURL(/\/app\/timesheets$/);
   await uploadPdf(consultant, "week-42.pdf");
 
   // Admin signs out and back in: password + TOTP; then uploads and downloads.

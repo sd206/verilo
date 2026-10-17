@@ -1,0 +1,48 @@
+{
+  "document_type": "VMS_TIMESHEET",
+  "vms_name": "Beeline",
+  "consultant_name": "Priya Nair",
+  "worker_id": "BL-88213",
+  "timesheet_id": null,
+  "period_start": "2026-10-19",
+  "period_end": "2026-10-25",
+  "daily_hours": [
+    {
+      "date": "2026-10-19",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-10-20",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-10-21",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-10-22",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    },
+    {
+      "date": "2026-10-23",
+      "hours": 8,
+      "rate_kind": "REGULAR"
+    }
+  ],
+  "total_hours": 40,
+  "approval_status": "SUBMITTED",
+  "approver_name": null,
+  "approved_at": null,
+  "confidence": {
+    "overall": 1,
+    "period": 1,
+    "total_hours": 1,
+    "daily_hours": 1,
+    "approval_status": 1
+  },
+  "notes": null
+}

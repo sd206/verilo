@@ -176,3 +176,21 @@ describe("preprocessing (8.1)", () => {
     expect(hammingDistanceHex(a, await differenceHash(flipped))).toBeGreaterThan(5);
   });
 });
+
+describe("fixture set (8.7)", async () => {
+  const { readdirSync, readFileSync } = await import("node:fs");
+  const path = await import("node:path");
+  const { FIXTURES_DIR } = await import("./index");
+  const manifest = JSON.parse(readFileSync(path.join(FIXTURES_DIR, "manifest.json"), "utf8")) as { name: string; file: string; clear: boolean }[];
+  it("has at least 30 fixtures, each with a file and a schema-valid expected answer", () => {
+    expect(manifest.length).toBeGreaterThanOrEqual(30);
+    const files = new Set(readdirSync(FIXTURES_DIR));
+    for (const m of manifest) {
+      expect(files.has(m.file), m.file).toBe(true);
+      const expected = JSON.parse(readFileSync(path.join(FIXTURES_DIR, `${m.name}.expected.json`), "utf8"));
+      const r = timesheetExtractionSchema.safeParse(expected);
+      expect(r.success, `${m.name}: ${r.success ? "" : r.error.issues[0]?.message}`).toBe(true);
+    }
+    expect(manifest.filter((m) => !m.clear).length).toBeGreaterThan(0);
+  });
+});

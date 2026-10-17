@@ -1,0 +1,22 @@
+{
+  "document_type": "EMAIL_APPROVAL",
+  "vms_name": null,
+  "consultant_name": "Ravi Kumar",
+  "worker_id": null,
+  "timesheet_id": null,
+  "period_start": "2026-09-01",
+  "period_end": "2026-09-30",
+  "daily_hours": [],
+  "total_hours": 176,
+  "approval_status": "APPROVED",
+  "approver_name": "Jordan Ellis",
+  "approved_at": "2026-10-02",
+  "confidence": {
+    "overall": 1,
+    "period": 1,
+    "total_hours": 1,
+    "daily_hours": 1,
+    "approval_status": 1
+  },
+  "notes": null
+}
