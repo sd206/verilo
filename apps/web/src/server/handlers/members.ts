@@ -19,10 +19,14 @@ import {
 import {
   changeUserStatus,
   findInvitationByTokenHash,
+  getConsultant,
   findOrCreateInvitedUser,
   findUserForSignin,
   getFirm,
   getMembership,
+  getMembershipById,
+  updateMembership,
+  countActiveAdmins,
   getUser,
   insertInvitation,
   insertMembership,
@@ -37,7 +41,7 @@ import {
 } from "@verilo/db";
 import { inviteEmail } from "@verilo/email";
 import type { Deps } from "../deps";
-import { email, parse, type NewSession, type RequestMeta } from "./common";
+import { email, parse, uuid, type NewSession, type RequestMeta } from "./common";
 
 export const INVITE_TTL_DAYS = 7;
 
@@ -49,6 +53,8 @@ const inviteSchema = z.strictObject({
   email,
   name: z.string().trim().max(200).optional(),
   role: z.enum(ROLES),
+  /** Required for CONSULTANT invitations: the consultant record this login belongs to. */
+  consultantId: uuid.optional(),
 });
 
 export async function inviteUser(
@@ -66,6 +72,12 @@ export async function inviteUser(
     const inviter = await getUser(tx, ctx.userId);
     if (!firm || !inviter) throw new NotFoundError();
 
+    if (data.role === "CONSULTANT") {
+      if (!data.consultantId) throw new ValidationError("Choose which consultant this login is for");
+      if (!(await getConsultant(tx, ctx.firmId, data.consultantId))) throw new NotFoundError("Consultant not found");
+    } else if (data.consultantId) {
+      throw new ValidationError("Only Consultant logins are linked to a consultant");
+    }
     const displayName = data.name || data.email.split("@")[0]!;
     const userId = await findOrCreateInvitedUser(tx, data.email, displayName, ctx.userId);
     if (await getMembership(tx, ctx.firmId, userId)) {
@@ -75,6 +87,7 @@ export async function inviteUser(
       firmId: ctx.firmId,
       email: data.email,
       role: data.role,
+      consultantId: data.consultantId ?? null,
       tokenHash: sha256Hex(token),
       expiresAt: new Date(Date.now() + INVITE_TTL_DAYS * 86_400_000),
       createdBy: ctx.userId,
@@ -207,6 +220,7 @@ export async function acceptInvite(
       firmId: inv.firmId,
       userId: user.id,
       role: inv.role,
+      consultantId: inv.consultantId,
       createdBy: user.id,
     });
     const accepted = await markInvitationAccepted(tx, inv.firmId, inv.id, user.id);
@@ -231,4 +245,60 @@ export async function acceptInvite(
   });
   const next = user.mfaEnabledAt ? "/mfa/verify" : roleRequiresMfa(inv.role) ? "/mfa/setup" : "/app";
   return { firmId: inv.firmId, userId: user.id, session, next };
+}
+
+// ---------------------------------------------------------------------------
+// Users and roles (13.3 item 2): change role, disable, require MFA. Admin only.
+// ---------------------------------------------------------------------------
+
+const memberUpdateSchema = z.strictObject({
+  membershipId: uuid,
+  role: z.enum(ROLES).optional(),
+  consultantId: uuid.nullable().optional(),
+  disabled: z.boolean().optional(),
+  mfaRequired: z.boolean().optional(),
+});
+
+export async function updateMember(d: Deps, ctx: FirmContext, input: unknown) {
+  requirePermission(ctx, "MANAGE_FIRM");
+  const data = parse(memberUpdateSchema, input);
+  return withTenant(d.db, ctx, async (tx) => {
+    const m = await getMembershipById(tx, ctx.firmId, data.membershipId);
+    if (!m) throw new NotFoundError();
+    if (m.userId === ctx.userId && (data.role !== undefined || data.disabled !== undefined)) {
+      throw new ForbiddenError("You can't change your own role or disable yourself");
+    }
+    const role = data.role ?? m.role;
+    let consultantId = data.consultantId !== undefined ? data.consultantId : m.consultantId;
+    if (role === "CONSULTANT") {
+      if (!consultantId) throw new ValidationError("Choose which consultant this login is for");
+      if (!(await getConsultant(tx, ctx.firmId, consultantId))) throw new NotFoundError("Consultant not found");
+    } else {
+      consultantId = null;
+    }
+    const disabledAt = data.disabled === undefined ? m.disabledAt : data.disabled ? (m.disabledAt ?? new Date()) : null;
+    const losingAdmin = m.role === "ADMIN" && !m.disabledAt && (role !== "ADMIN" || disabledAt !== null);
+    if (losingAdmin && (await countActiveAdmins(tx, ctx.firmId)) <= 1) {
+      throw new ConflictError("A firm needs at least one active Admin");
+    }
+    const updated = await updateMembership(tx, ctx.firmId, m.id, {
+      role,
+      consultantId,
+      disabledAt,
+      mfaRequired: data.mfaRequired ?? m.mfaRequired,
+    });
+    const pick = (x: typeof m) => ({ role: x.role, consultantId: x.consultantId, disabledAt: x.disabledAt, mfaRequired: x.mfaRequired });
+    await writeAudit(tx, {
+      firmId: ctx.firmId,
+      actorUserId: ctx.userId,
+      entityType: "membership",
+      entityId: m.id,
+      action: data.disabled !== undefined && data.disabled !== (m.disabledAt !== null) ? (data.disabled ? "disable" : "enable") : "update",
+      before: pick(m),
+      after: pick(updated),
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+    });
+    return pick(updated);
+  });
 }

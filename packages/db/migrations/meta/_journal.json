@@ -15,6 +15,27 @@
       "when": 1792176316187,
       "tag": "0001_rls",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792215186717,
+      "tag": "0002_master_data",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792215187840,
+      "tag": "0003_master_data_rls",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792215263771,
+      "tag": "0004_membership_controls",
+      "breakpoints": true
     }
   ]
 }

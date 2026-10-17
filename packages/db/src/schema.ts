@@ -9,6 +9,9 @@
  */
 import {
   bigint,
+  boolean,
+  date,
+  numeric,
   index,
   integer,
   jsonb,
@@ -111,11 +114,15 @@ export const membership = pgTable(
       .notNull()
       .references(() => appUser.id),
     role: roleEnum("role").notNull(),
-    /**
-     * Required when role = CONSULTANT (section 5.1). The consultant table arrives in M1;
-     * the foreign key and the CHECK constraint are added then.
-     */
+    /** Required when role = CONSULTANT (section 5.1). FK and CHECK added in migration 0003. */
     consultantId: uuid("consultant_id"),
+    /**
+     * "Disable" on Users and roles (13.3 item 2) is per firm: app_user.status is global, and one
+     * firm's Admin must not lock a user out of another firm. M1 addition.
+     */
+    disabledAt: timestamp("disabled_at", { withTimezone: true }),
+    /** "Require MFA" for a Manager or Consultant in this firm (13.3 item 2). M1 addition. */
+    mfaRequired: boolean("mfa_required").notNull().default(false),
   },
   (t) => [
     index("membership_firm_id_idx").on(t.firmId),
@@ -184,6 +191,8 @@ export const invitation = pgTable(
     role: roleEnum("role").notNull(),
     /** sha256 of the token; the token itself only exists in the invite link. */
     tokenHash: text("token_hash").notNull().unique(),
+    /** The consultant record a CONSULTANT invitation links to (copied to membership on accept). */
+    consultantId: uuid("consultant_id"),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
     acceptedAt: timestamp("accepted_at", { withTimezone: true }),
     acceptedByUserId: uuid("accepted_by_user_id").references(() => appUser.id),
@@ -250,5 +259,254 @@ export const rateLimit = pgTable(
   (t) => [primaryKey({ columns: [t.key, t.windowStart] })],
 );
 
+// ---------------------------------------------------------------------------
+// 5.2 Parties
+// ---------------------------------------------------------------------------
+export const partyKindEnum = pgEnum("party_kind", ["PRIME_VENDOR", "IMPLEMENTATION_PARTNER", "END_CLIENT", "SUB_VENDOR", "FACTOR"]);
+export const invoiceLayoutEnum = pgEnum("invoice_layout", ["PER_CONSULTANT", "COMBINED"]);
+export const deliveryMethodEnum = pgEnum("delivery_method", ["EMAIL", "PORTAL"]);
+export const vendorPayTermsEnum = pgEnum("vendor_pay_terms", ["NET", "PAY_WHEN_PAID"]);
+export const w9TaxClassificationEnum = pgEnum("w9_tax_classification", [
+  "INDIVIDUAL_SOLE_PROP_SMLLC",
+  "C_CORP",
+  "S_CORP",
+  "PARTNERSHIP",
+  "TRUST_ESTATE",
+  "LLC_C",
+  "LLC_S",
+  "LLC_P",
+  "OTHER",
+  "UNKNOWN",
+]);
+export const tinTypeEnum = pgEnum("tin_type", ["EIN", "SSN"]);
+export const partyDocTypeEnum = pgEnum("party_doc_type", ["W9", "COI", "MSA", "WORK_ORDER", "OTHER"]);
+
+const firmRef = () =>
+  uuid("firm_id")
+    .notNull()
+    .references(() => firm.id);
+const archivedAt = () => timestamp("archived_at", { withTimezone: true });
+
+export const party = pgTable(
+  "party",
+  {
+    id: id(),
+    ...tsCols(),
+    firmId: firmRef(),
+    kind: partyKindEnum("kind").notNull(),
+    legalName: text("legal_name").notNull(),
+    displayName: text("display_name").notNull(),
+    /** Short code for invoice numbers ({CLIENT}); unique per firm. */
+    code: text("code"),
+    addressLine1: text("address_line1"),
+    addressLine2: text("address_line2"),
+    city: text("city"),
+    state: text("state"),
+    postalCode: text("postal_code"),
+    country: text("country").notNull().default("US"),
+    phone: text("phone"),
+    apEmails: text("ap_emails").array().notNull().default([]),
+    arEmails: text("ar_emails").array().notNull().default([]),
+    paymentTermsDays: integer("payment_terms_days"),
+    paysWhenPaidUpstream: boolean("pays_when_paid_upstream").notNull().default(false),
+    upstreamBufferDays: integer("upstream_buffer_days").notNull().default(15),
+    standardDeductionBps: integer("standard_deduction_bps"),
+    deductionLabel: text("deduction_label"),
+    invoiceLayout: invoiceLayoutEnum("invoice_layout").notNull().default("PER_CONSULTANT"),
+    deliveryMethod: deliveryMethodEnum("delivery_method").notNull().default("EMAIL"),
+    backupRequired: boolean("backup_required").notNull().default(false),
+    poRequired: boolean("po_required").notNull().default(false),
+    timesheetConfirmEmail: text("timesheet_confirm_email"),
+    vendorPayTerms: vendorPayTermsEnum("vendor_pay_terms"),
+    vendorNetDays: integer("vendor_net_days"),
+    /** Encrypted with the firm's data key (R11). Sub-vendors only. */
+    remitDetails: text("remit_details"),
+    qboCustomerId: text("qbo_customer_id"),
+    qboVendorId: text("qbo_vendor_id"),
+    /** Section 23.8 (sub-vendors). */
+    w9TaxClassification: w9TaxClassificationEnum("w9_tax_classification").notNull().default("UNKNOWN"),
+    /** Encrypted with the firm's data key (R11). */
+    tin: text("tin"),
+    tinType: tinTypeEnum("tin_type"),
+    archivedAt: archivedAt(),
+  },
+  (t) => [
+    index("party_firm_id_idx").on(t.firmId),
+    uniqueIndex("party_firm_code_key").on(t.firmId, t.code),
+  ],
+);
+
+export const partyContact = pgTable(
+  "party_contact",
+  {
+    id: id(),
+    ...tsCols(),
+    firmId: firmRef(),
+    partyId: uuid("party_id")
+      .notNull()
+      .references(() => party.id),
+    name: text("name").notNull(),
+    email: text("email"),
+    phone: text("phone"),
+    roleLabel: text("role_label"),
+    archivedAt: archivedAt(),
+  },
+  (t) => [index("party_contact_firm_id_idx").on(t.firmId), index("party_contact_party_idx").on(t.partyId)],
+);
+
+export const partyDocument = pgTable(
+  "party_document",
+  {
+    id: id(),
+    ...tsCols(),
+    firmId: firmRef(),
+    partyId: uuid("party_id")
+      .notNull()
+      .references(() => party.id),
+    docType: partyDocTypeEnum("doc_type").notNull(),
+    fileId: uuid("file_id")
+      .notNull()
+      .references(() => file.id),
+    effectiveDate: date("effective_date", { mode: "string" }),
+    expiryDate: date("expiry_date", { mode: "string" }),
+    requiredForPayment: boolean("required_for_payment").notNull().default(false),
+    archivedAt: archivedAt(),
+  },
+  (t) => [index("party_document_firm_id_idx").on(t.firmId), index("party_document_party_idx").on(t.partyId)],
+);
+
+// ---------------------------------------------------------------------------
+// 5.3 Consultants and engagements
+// ---------------------------------------------------------------------------
+export const employmentTypeEnum = pgEnum("employment_type", ["W2", "CONTRACTOR"]);
+export const consultantStatusEnum = pgEnum("consultant_status", ["ACTIVE", "INACTIVE"]);
+export const cycleEnum = pgEnum("cycle", ["WEEKLY", "BIWEEKLY", "SEMIMONTHLY", "MONTHLY"]);
+export const engagementStatusEnum = pgEnum("engagement_status", ["DRAFT", "ACTIVE", "ENDED"]);
+export const rateSideEnum = pgEnum("rate_side", ["BILL", "PAY"]);
+export const rateKindEnum = pgEnum("rate_kind", ["REGULAR", "OVERTIME", "HOLIDAY"]);
+
+export const consultant = pgTable(
+  "consultant",
+  {
+    id: id(),
+    ...tsCols(),
+    firmId: firmRef(),
+    firstName: text("first_name").notNull(),
+    lastName: text("last_name").notNull(),
+    /** Every address they may send timesheets from; unique per firm (trigger in 0003). */
+    emails: text("emails").array().notNull().default([]),
+    phone: text("phone"),
+    employmentType: employmentTypeEnum("employment_type").notNull(),
+    subVendorPartyId: uuid("sub_vendor_party_id").references(() => party.id),
+    workAuthType: text("work_auth_type"),
+    workAuthExpiry: date("work_auth_expiry", { mode: "string" }),
+    status: consultantStatusEnum("status").notNull().default("ACTIVE"),
+    archivedAt: archivedAt(),
+  },
+  (t) => [index("consultant_firm_id_idx").on(t.firmId)],
+);
+
+export const engagement = pgTable(
+  "engagement",
+  {
+    id: id(),
+    ...tsCols(),
+    firmId: firmRef(),
+    consultantId: uuid("consultant_id")
+      .notNull()
+      .references(() => consultant.id),
+    billToPartyId: uuid("bill_to_party_id")
+      .notNull()
+      .references(() => party.id),
+    endClientPartyId: uuid("end_client_party_id")
+      .notNull()
+      .references(() => party.id),
+    primePartyId: uuid("prime_party_id").references(() => party.id),
+    implementationPartnerPartyId: uuid("implementation_partner_party_id").references(() => party.id),
+    projectName: text("project_name"),
+    roleTitle: text("role_title"),
+    startDate: date("start_date", { mode: "string" }).notNull(),
+    endDate: date("end_date", { mode: "string" }),
+    timesheetCycle: cycleEnum("timesheet_cycle").notNull(),
+    biweeklyAnchorDate: date("biweekly_anchor_date", { mode: "string" }),
+    invoiceCycle: cycleEnum("invoice_cycle").notNull(),
+    evidenceRequired: boolean("evidence_required").notNull().default(true),
+    expectedWeeklyHours: numeric("expected_weekly_hours", { precision: 5, scale: 2 }).notNull().default("40"),
+    maxWeeklyHoursWarning: numeric("max_weekly_hours_warning", { precision: 5, scale: 2 }).notNull().default("50"),
+    deductionBpsOverride: integer("deduction_bps_override"),
+    factored: boolean("factored").notNull().default(false),
+    primeWorkOrderNo: text("prime_work_order_no"),
+    primeConsultantRef: text("prime_consultant_ref"),
+    endClientWorkerRef: text("end_client_worker_ref"),
+    status: engagementStatusEnum("status").notNull().default("DRAFT"),
+  },
+  (t) => [index("engagement_firm_id_idx").on(t.firmId), index("engagement_consultant_idx").on(t.consultantId)],
+);
+
+/** Effective-dated; no overlaps per (engagement, side, rate_kind) — exclusion constraint in 0003. */
+export const rate = pgTable(
+  "rate",
+  {
+    id: id(),
+    ...tsCols(),
+    firmId: firmRef(),
+    engagementId: uuid("engagement_id")
+      .notNull()
+      .references(() => engagement.id),
+    side: rateSideEnum("side").notNull(),
+    rateKind: rateKindEnum("rate_kind").notNull().default("REGULAR"),
+    rateCents: integer("rate_cents").notNull(),
+    effectiveFrom: date("effective_from", { mode: "string" }).notNull(),
+    /** Inclusive; null = open-ended. */
+    effectiveTo: date("effective_to", { mode: "string" }),
+  },
+  (t) => [index("rate_firm_id_idx").on(t.firmId), index("rate_engagement_idx").on(t.engagementId)],
+);
+
+export const purchaseOrder = pgTable(
+  "purchase_order",
+  {
+    id: id(),
+    ...tsCols(),
+    firmId: firmRef(),
+    engagementId: uuid("engagement_id")
+      .notNull()
+      .references(() => engagement.id),
+    poNumber: text("po_number").notNull(),
+    amountCents: bigint("amount_cents", { mode: "number" }),
+    startDate: date("start_date", { mode: "string" }),
+    endDate: date("end_date", { mode: "string" }),
+    alertThresholdsBps: integer("alert_thresholds_bps").array().notNull().default([7500, 9000, 10000]),
+  },
+  (t) => [index("purchase_order_firm_id_idx").on(t.firmId), index("purchase_order_engagement_idx").on(t.engagementId)],
+);
+
+/** Firm holiday calendar (13.3 item 1; approved M1 addition). */
+export const firmHoliday = pgTable(
+  "firm_holiday",
+  {
+    id: id(),
+    ...tsCols(),
+    firmId: firmRef(),
+    holidayDate: date("holiday_date", { mode: "string" }).notNull(),
+    name: text("name").notNull(),
+  },
+  (t) => [uniqueIndex("firm_holiday_firm_date_key").on(t.firmId, t.holidayDate)],
+);
+
 /** Tenant-owned tables: `firm` itself plus every table with firm_id. A test checks RLS on each. */
-export const TENANT_TABLES = ["firm", "membership", "audit_event", "file", "invitation"] as const;
+export const TENANT_TABLES = [
+  "firm",
+  "membership",
+  "audit_event",
+  "file",
+  "invitation",
+  "party",
+  "party_contact",
+  "party_document",
+  "consultant",
+  "engagement",
+  "rate",
+  "purchase_order",
+  "firm_holiday",
+] as const;

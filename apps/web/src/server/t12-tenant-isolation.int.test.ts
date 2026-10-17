@@ -18,10 +18,15 @@ import * as membersH from "./handlers/members";
 import * as filesH from "./handlers/files";
 import * as homeH from "./handlers/home";
 import * as routesH from "./handlers/routes";
+import * as partiesH from "./handlers/parties";
+import * as consultantsH from "./handlers/consultants";
+import * as engagementsH from "./handlers/engagements";
+import * as settingsH from "./handlers/settings";
 import {
   addMember,
   closeTestDb,
   createFirmWithAdmin,
+  createMasterData,
   linkToken,
   meta,
   PASSWORD,
@@ -35,8 +40,8 @@ const HERE = __dirname;
 
 const d = testDeps();
 
-let A: { firmId: string; admin: Actor; consultant: Actor; fileId: string; inviteToken: string };
-let B: { firmId: string; admin: Actor; consultant: Actor };
+let A: { firmId: string; admin: Actor; consultant: Actor; fileId: string; inviteToken: string; m: Awaited<ReturnType<typeof createMasterData>> };
+let B: { firmId: string; admin: Actor; consultant: Actor; m: Awaited<ReturnType<typeof createMasterData>> };
 let before: Record<string, unknown[]>;
 
 /** Expects a 403/404 AppError. */
@@ -78,10 +83,10 @@ beforeAll(async () => {
   const aConsultant = await addMember(d, a.admin, "CONSULTANT");
   const file = await uploadFile(d, a.admin, "%PDF-1.4 alpha timesheet");
   const pending = await membersH.inviteUser(d, a.admin.ctx, { email: "pending-alpha@example.com", role: "FINANCE" });
-  A = { ...a, consultant: aConsultant, fileId: file.id, inviteToken: linkToken(d, pending) };
+  A = { ...a, consultant: aConsultant, fileId: file.id, inviteToken: linkToken(d, pending), m: await createMasterData(d, a.admin, "Alpha") };
 
   const b = await createFirmWithAdmin(d, "Bravo");
-  B = { ...b, consultant: await addMember(d, b.admin, "CONSULTANT") };
+  B = { ...b, consultant: await addMember(d, b.admin, "CONSULTANT"), m: await createMasterData(d, b.admin, "Bravo") };
   await uploadFile(d, B.admin, "%PDF-1.4 bravo timesheet");
 
   before = await snapshotFirm(A.firmId);
@@ -295,6 +300,122 @@ describe("T12: row-level security as a second safeguard", () => {
 });
 
 // ---------------------------------------------------------------------------
+// M1 master data: Firm B's session with Firm A's ids
+// ---------------------------------------------------------------------------
+describe("T12: master data handlers with Firm A's ids", () => {
+  const b = () => B.admin.ctx;
+
+  it("parties: detail, update, archive → 404", async () => {
+    await expectDenied(partiesH.getPartyDetail(d, b(), { partyId: A.m.primeId }));
+    await expectDenied(partiesH.updateParty(d, b(), { partyId: A.m.primeId, legalName: "x", displayName: "x", code: "PWND" }));
+    await expectDenied(partiesH.archiveParty(d, b(), { partyId: A.m.endClientId }));
+  });
+
+  it("parties: create with a client-sent firmId → 400", async () => {
+    await expectRejectedInput(partiesH.createParty(d, b(), { kind: "END_CLIENT", legalName: "x", displayName: "x", firmId: A.firmId }));
+  });
+
+  it("contacts and documents → 404", async () => {
+    await expectDenied(partiesH.addContact(d, b(), { partyId: A.m.primeId, name: "x" }));
+    await expectDenied(partiesH.archiveContact(d, b(), { contactId: A.m.contactId }));
+    await expectDenied(partiesH.attachPartyDocument(d, b(), { partyId: A.m.subVendorId, fileId: B.m.fileId, docType: "W9" }));
+    // B's own party with A's file: the file isn't found in B (composite FK backs this up).
+    await expectDenied(partiesH.attachPartyDocument(d, b(), { partyId: B.m.subVendorId, fileId: A.m.fileId, docType: "W9" }));
+    await expectDenied(partiesH.archivePartyDocument(d, b(), { documentId: A.m.documentId }));
+  });
+
+  it("consultants → 404", async () => {
+    await expectDenied(consultantsH.getConsultantDetail(d, b(), { consultantId: A.m.consultantId }));
+    await expectDenied(
+      consultantsH.updateConsultant(d, b(), { consultantId: A.m.consultantId, firstName: "x", lastName: "x", employmentType: "W2" }),
+    );
+    await expectDenied(consultantsH.setConsultantStatus(d, b(), { consultantId: A.m.consultantId, status: "INACTIVE" }));
+    await expectDenied(consultantsH.archiveConsultant(d, b(), { consultantId: A.m.consultantId }));
+    // Creating a contractor under A's sub-vendor.
+    await expectDenied(
+      consultantsH.createConsultant(d, b(), { firstName: "x", lastName: "y", employmentType: "CONTRACTOR", subVendorPartyId: A.m.subVendorId }),
+    );
+  });
+
+  it("engagements → 404", async () => {
+    await expectDenied(engagementsH.getEngagementDetail(d, b(), { engagementId: A.m.engagementId }));
+    const base = {
+      billToPartyId: B.m.primeId,
+      endClientPartyId: B.m.endClientId,
+      startDate: "2026-09-01",
+      timesheetCycle: "MONTHLY",
+      invoiceCycle: "MONTHLY",
+    };
+    await expectDenied(engagementsH.updateEngagement(d, b(), { engagementId: A.m.engagementId, ...base }));
+    await expectDenied(engagementsH.setEngagementStatus(d, b(), { engagementId: A.m.engagementId, status: "ENDED", endDate: "2026-12-31" }));
+    // A's consultant, or B's consultant billed to A's parties.
+    await expectDenied(engagementsH.createEngagement(d, b(), { consultantId: A.m.consultantId, ...base }));
+    await expectDenied(engagementsH.createEngagement(d, b(), { consultantId: B.m.consultantId, ...base, billToPartyId: A.m.primeId }));
+    await expectDenied(engagementsH.createEngagement(d, b(), { consultantId: B.m.consultantId, ...base, endClientPartyId: A.m.endClientId }));
+  });
+
+  it("rates and POs → 404", async () => {
+    await expectDenied(engagementsH.addRate(d, b(), { engagementId: A.m.engagementId, side: "BILL", rate: "1.00", effectiveFrom: "2030-01-01" }));
+    await expectDenied(engagementsH.endRate(d, b(), { rateId: A.m.billRateId, effectiveTo: "2026-09-30" }));
+    await expectDenied(engagementsH.addPurchaseOrder(d, b(), { engagementId: A.m.engagementId, poNumber: "X" }));
+  });
+
+  it("lists and form options contain only Firm B's records", async () => {
+    const parties = await partiesH.listParties(d, b());
+    expect(parties.map((p) => p.id)).not.toContain(A.m.primeId);
+    expect(parties.length).toBeGreaterThan(0);
+    const cons = await consultantsH.listConsultants(d, b());
+    expect(cons.map((c) => c.id)).not.toContain(A.m.consultantId);
+    const opts = await engagementsH.getEngagementFormOptions(d, b());
+    const all = [...opts.billTo, ...opts.endClients, ...opts.primes, ...opts.subVendors, ...opts.consultants].map((x) => x.id);
+    expect(all).not.toContain(A.m.primeId);
+    expect(all).not.toContain(A.m.consultantId);
+  });
+
+  it("settings: reads show Firm B; A's ids → 404; client-sent firmId → 400", async () => {
+    const s = await settingsH.getFirmSettings(d, b());
+    expect(s.billToParties.map((p) => p.id)).not.toContain(A.m.primeId);
+    expect(s.holidays).toHaveLength(1);
+    await expectDenied(settingsH.previewInvoiceNumber(d, b(), { pattern: "{CLIENT}-{SEQ:4}", clientPartyId: A.m.primeId, invoiceDate: "2026-11-01" }));
+    await expectDenied(
+      settingsH.updateFirm(d, b(), {
+        legalName: "Bravo Consulting LLC",
+        displayName: "Bravo Consulting",
+        timezone: "America/Chicago",
+        weekStart: "MON",
+        matchTolerance: "1.00",
+        deductionTolerance: "1.00",
+        logoFileId: A.m.fileId,
+      }),
+    );
+    await expectRejectedInput(settingsH.setNumberingPattern(d, b(), { pattern: "{SEQ:4}", seqReset: "NEVER", firmId: A.firmId }));
+    await expectRejectedInput(settingsH.setHolidays(d, b(), { holidays: [], firmId: A.firmId }));
+  });
+
+  it("users and roles: A's membership → 404; inviting A's consultant → 404", async () => {
+    const [m] = await withTenant(d.db, A.admin.ctx, (tx) =>
+      tx.execute<{ id: string }>(sql`select id from membership where firm_id = ${A.firmId} and role = 'CONSULTANT' limit 1`).then((r) => r.rows),
+    );
+    await expectDenied(membersH.updateMember(d, b(), { membershipId: m!.id, disabled: true }));
+    await expectDenied(membersH.inviteUser(d, b(), { email: "c@example.com", role: "CONSULTANT", consultantId: A.m.consultantId }));
+  });
+
+  it("RLS: raw SQL in Firm B can't see or write Firm A's master data, and same-firm FKs block cross-firm links", async () => {
+    await withTenant(d.db, b(), async (tx) => {
+      for (const t of ["party", "party_contact", "party_document", "consultant", "engagement", "rate", "purchase_order", "firm_holiday"]) {
+        const r = await tx.execute(sql.raw(`select count(*)::int as n from ${t} where firm_id = '${A.firmId}'`));
+        expect((r.rows[0] as { n: number }).n, t).toBe(0);
+      }
+    });
+    // Even with RLS satisfied (row in B), a reference to A's party is rejected by the composite FK.
+    const err = await withTenant(d.db, b(), (tx) =>
+      tx.execute(sql`update engagement set bill_to_party_id = ${A.m.primeId} where id = ${B.m.engagementId}`),
+    ).catch((e: unknown) => e as { cause?: { message?: string } });
+    expect(String((err as { cause?: { message?: string } })?.cause?.message)).toMatch(/foreign key/);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // coverage guard: every handler and route must appear above
 // ---------------------------------------------------------------------------
 const COVERED_HANDLERS = new Set([
@@ -315,6 +436,35 @@ const COVERED_HANDLERS = new Set([
   "files.getDownloadUrl",
   "home.getFirmSummary",
   "routes.downloadFileRoute",
+  "members.updateMember",
+  "parties.listParties",
+  "parties.getPartyDetail",
+  "parties.createParty",
+  "parties.updateParty",
+  "parties.archiveParty",
+  "parties.addContact",
+  "parties.archiveContact",
+  "parties.attachPartyDocument",
+  "parties.archivePartyDocument",
+  "consultants.listConsultants",
+  "consultants.getConsultantDetail",
+  "consultants.createConsultant",
+  "consultants.updateConsultant",
+  "consultants.setConsultantStatus",
+  "consultants.archiveConsultant",
+  "engagements.getEngagementDetail",
+  "engagements.createEngagement",
+  "engagements.updateEngagement",
+  "engagements.setEngagementStatus",
+  "engagements.addRate",
+  "engagements.endRate",
+  "engagements.addPurchaseOrder",
+  "engagements.getEngagementFormOptions",
+  "settings.getFirmSettings",
+  "settings.updateFirm",
+  "settings.setNumberingPattern",
+  "settings.previewInvoiceNumber",
+  "settings.setHolidays",
 ]);
 /** Exported helpers that are not request handlers. */
 const NOT_HANDLERS = new Set(["auth.slugify", "routes.cookieFromRequest", "members.INVITE_TTL_DAYS"]);
@@ -322,7 +472,17 @@ const COVERED_ROUTES = new Set(["api/auth/[...nextauth]", "api/health", "api/fil
 
 describe("T12 coverage", () => {
   it("every exported handler has a tenant-isolation case", () => {
-    const modules = { auth: authH, members: membersH, files: filesH, home: homeH, routes: routesH };
+    const modules = {
+      auth: authH,
+      members: membersH,
+      files: filesH,
+      home: homeH,
+      routes: routesH,
+      parties: partiesH,
+      consultants: consultantsH,
+      engagements: engagementsH,
+      settings: settingsH,
+    };
     const exported = Object.entries(modules).flatMap(([m, mod]) =>
       Object.entries(mod)
         .filter(([, v]) => typeof v === "function" || typeof v === "number")
@@ -332,7 +492,20 @@ describe("T12 coverage", () => {
     expect(missing, "add a T12 case for these handlers").toEqual([]);
     const handlerDir = path.join(HERE, "handlers");
     const files = fs.readdirSync(handlerDir).filter((f) => f.endsWith(".ts") && !f.endsWith(".test.ts"));
-    expect(files.sort()).toEqual(["auth.ts", "common.ts", "files.ts", "home.ts", "members.ts", "routes.ts"]);
+    expect(files.sort()).toEqual([
+      "auth.ts",
+      "common.ts",
+      "consultants.ts",
+      "engagements.ts",
+      "fields.ts",
+      "files.ts",
+      "firm-crypto.ts",
+      "home.ts",
+      "members.ts",
+      "parties.ts",
+      "routes.ts",
+      "settings.ts",
+    ]);
   });
 
   it("every route handler file has a tenant-isolation case", () => {
@@ -363,6 +536,28 @@ describe("T12 coverage", () => {
       acceptInviteAction: "members.acceptInvite",
       requestUploadAction: "files.requestUpload",
       completeUploadAction: "files.completeUpload",
+      createPartyAction: "parties.createParty",
+      updatePartyAction: "parties.updateParty",
+      archivePartyAction: "parties.archiveParty",
+      addContactAction: "parties.addContact",
+      archiveContactAction: "parties.archiveContact",
+      attachPartyDocumentAction: "parties.attachPartyDocument",
+      archivePartyDocumentAction: "parties.archivePartyDocument",
+      createConsultantAction: "consultants.createConsultant",
+      updateConsultantAction: "consultants.updateConsultant",
+      setConsultantStatusAction: "consultants.setConsultantStatus",
+      archiveConsultantAction: "consultants.archiveConsultant",
+      createEngagementAction: "engagements.createEngagement",
+      updateEngagementAction: "engagements.updateEngagement",
+      setEngagementStatusAction: "engagements.setEngagementStatus",
+      addRateAction: "engagements.addRate",
+      endRateAction: "engagements.endRate",
+      addPurchaseOrderAction: "engagements.addPurchaseOrder",
+      updateFirmAction: "settings.updateFirm",
+      setNumberingPatternAction: "settings.setNumberingPattern",
+      previewInvoiceNumberAction: "settings.previewInvoiceNumber",
+      setHolidaysAction: "settings.setHolidays",
+      updateMemberAction: "members.updateMember",
     };
     const found = fs
       .readdirSync(actionsDir)

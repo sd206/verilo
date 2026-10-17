@@ -134,7 +134,14 @@ export async function createFirmWithAdmin(d: Deps, label: string): Promise<{ fir
 /** Invites a user with `role` and accepts; completes MFA when the role requires it. */
 export async function addMember(d: Deps, admin: Actor, role: Role, label = role.toLowerCase()): Promise<Actor> {
   const email = `${label}-${randomUUID().slice(0, 8)}@example.com`;
-  const inv = await membersH.inviteUser(d, admin.ctx, { email, role, name: `${label} user` });
+  let consultantId: string | undefined;
+  if (role === "CONSULTANT") {
+    const { createConsultant } = await import("./handlers/consultants");
+    consultantId = (
+      await createConsultant(d, admin.ctx, { firstName: label, lastName: "Consultant", employmentType: "W2", emails: [email] })
+    ).id;
+  }
+  const inv = await membersH.inviteUser(d, admin.ctx, { email, role, name: `${label} user`, ...(consultantId ? { consultantId } : {}) });
   const token = linkToken(d, inv);
   const acc = await membersH.acceptInvite(d, meta(), { token, name: `${label} user`, password: PASSWORD });
   let secret: string | null = null;
@@ -160,4 +167,84 @@ export async function uploadFile(d: Deps, actor: Actor, body: Buffer | string, f
   const key = req.upload.url.replace("memory://", "");
   await d.storage.put(key, buf, contentType);
   return completeUpload(d, actor.ctx, { fileId: req.fileId });
+}
+
+/**
+ * A firm's worth of master data shaped like seed 18.1: prime, end client, sub-vendor, a
+ * contractor with an engagement, bill and pay rates, a PO, a contact, a document and a holiday.
+ */
+export async function createMasterData(d: Deps, admin: Actor, label = "X") {
+  const parties = await import("./handlers/parties");
+  const consultants = await import("./handlers/consultants");
+  const engagements = await import("./handlers/engagements");
+  const settings = await import("./handlers/settings");
+  const code = (label.replace(/[^A-Z0-9]/gi, "").toUpperCase() + "GLBX").slice(0, 6);
+  const prime = await parties.createParty(d, admin.ctx, {
+    kind: "PRIME_VENDOR",
+    legalName: `${label} Globex Solutions`,
+    displayName: `${label} Globex`,
+    code,
+    paymentTermsDays: 45,
+    paysWhenPaidUpstream: true,
+    standardDeduction: "2",
+    deductionLabel: "MSP fee",
+    backupRequired: true,
+  });
+  const endClient = await parties.createParty(d, admin.ctx, { kind: "END_CLIENT", legalName: `${label} Initech Corp`, displayName: `${label} Initech` });
+  const sub = await parties.createParty(d, admin.ctx, {
+    kind: "SUB_VENDOR",
+    legalName: `${label} Apex Talent Inc`,
+    displayName: `${label} Apex`,
+    vendorPayTerms: "PAY_WHEN_PAID",
+    vendorNetDays: 0,
+    remitDetails: "Bank 123 / acct 456789",
+    tin: "12-3456789",
+    tinType: "EIN",
+  });
+  const contact = await parties.addContact(d, admin.ctx, { partyId: prime.id, name: "Pat Prime", email: "ap@globex.example.com" });
+  const file = await uploadFile(d, admin, "%PDF-1.4 W-9", "w9.pdf");
+  const doc = await parties.attachPartyDocument(d, admin.ctx, {
+    partyId: sub.id,
+    fileId: file.id,
+    docType: "W9",
+    effectiveDate: "2026-01-01",
+    expiryDate: "2027-12-31",
+  });
+  const consultant = await consultants.createConsultant(d, admin.ctx, {
+    firstName: "Ravi",
+    lastName: `Kumar ${label}`,
+    emails: [`ravi-${label.toLowerCase()}-${randomUUID().slice(0, 6)}@example.com`],
+    employmentType: "CONTRACTOR",
+    subVendorPartyId: sub.id,
+  });
+  const engagement = await engagements.createEngagement(d, admin.ctx, {
+    consultantId: consultant.id,
+    billToPartyId: prime.id,
+    endClientPartyId: endClient.id,
+    primePartyId: prime.id,
+    roleTitle: "SAP Analyst",
+    startDate: "2026-09-01",
+    timesheetCycle: "MONTHLY",
+    invoiceCycle: "MONTHLY",
+    evidenceRequired: true,
+  });
+  const bill = await engagements.addRate(d, admin.ctx, { engagementId: engagement.id, side: "BILL", rate: "95.00", effectiveFrom: "2026-09-01" });
+  const pay = await engagements.addRate(d, admin.ctx, { engagementId: engagement.id, side: "PAY", rate: "75.00", effectiveFrom: "2026-09-01" });
+  const po = await engagements.addPurchaseOrder(d, admin.ctx, { engagementId: engagement.id, poNumber: "GLX-WO-7781", amount: "60000.00" });
+  await engagements.setEngagementStatus(d, admin.ctx, { engagementId: engagement.id, status: "ACTIVE" });
+  await settings.setHolidays(d, admin.ctx, { holidays: [{ date: "2026-11-26", name: "Thanksgiving" }] });
+  return {
+    primeId: prime.id,
+    endClientId: endClient.id,
+    subVendorId: sub.id,
+    contactId: contact.id,
+    fileId: file.id,
+    documentId: doc.id,
+    consultantId: consultant.id,
+    engagementId: engagement.id,
+    billRateId: bill.id,
+    payRateId: pay.id,
+    poId: po.id,
+    code,
+  };
 }

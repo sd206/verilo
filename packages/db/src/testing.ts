@@ -16,7 +16,7 @@ export async function snapshotFirm(firmId: string): Promise<Record<string, unkno
   return withOwnerClient(async (c) => {
     const out: Record<string, unknown[]> = {};
     out.firm = (await c.query("select * from firm where id = $1", [firmId])).rows;
-    for (const t of ["membership", "audit_event", "file", "invitation"]) {
+    for (const t of ["membership", "audit_event", "file", "invitation", "party", "party_contact", "party_document", "consultant", "engagement", "rate", "purchase_order", "firm_holiday"]) {
       out[t] = (await c.query(`select * from ${t} where firm_id = $1 order by id`, [firmId])).rows;
     }
     out.app_user = (

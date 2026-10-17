@@ -38,10 +38,13 @@ export function authState(input: {
   mfaEnabled: boolean;
   mfaVerified: boolean;
   role: Role | null;
+  /** The firm's Admin required MFA for this member (13.3 item 2). */
+  mfaRequiredByFirm?: boolean;
 }): AuthState {
   if (input.userStatus !== "ACTIVE") return "DISABLED";
   if (input.mfaEnabled && !input.mfaVerified) return "MFA_REQUIRED";
-  if (input.role && roleRequiresMfa(input.role) && !input.mfaEnabled) return "MFA_SETUP_REQUIRED";
+  const firmRequires = input.role !== null && (roleRequiresMfa(input.role) || input.mfaRequiredByFirm === true);
+  if (firmRequires && !input.mfaEnabled) return "MFA_SETUP_REQUIRED";
   if (!input.role) return "NO_FIRM";
   return "OK";
 }
@@ -52,6 +55,8 @@ export interface AuthContext {
   user: { id: string; email: string; name: string; status: UserStatus; mfaEnabled: boolean };
   firmId: string | null;
   role: Role | null;
+  /** membership.consultant_id for CONSULTANT members. */
+  consultantId: string | null;
   mfaVerified: boolean;
   state: AuthState;
 }
@@ -62,6 +67,7 @@ export interface FirmContext {
   userId: string;
   firmId: string;
   role: Role;
+  consultantId: string | null;
   ip: string | null;
   userAgent: string | null;
 }
@@ -98,7 +104,9 @@ export async function resolveSession(db: Db, token: string | undefined | null): 
 
   const fetch = async (tx: Tx) => {
     const user = await getUser(tx, s.userId);
-    const membership = s.activeFirmId ? await getMembership(tx, s.activeFirmId, s.userId) : null;
+    const m = s.activeFirmId ? await getMembership(tx, s.activeFirmId, s.userId) : null;
+    // A membership disabled by the firm's Admin counts as no membership in that firm.
+    const membership = m && !m.disabledAt ? m : null;
     return { user, membership };
   };
   const { user, membership } = s.activeFirmId
@@ -114,8 +122,9 @@ export async function resolveSession(db: Db, token: string | undefined | null): 
     user: { id: user.id, email: user.email, name: user.name, status: user.status, mfaEnabled },
     firmId: membership ? s.activeFirmId : null,
     role,
+    consultantId: membership?.consultantId ?? null,
     mfaVerified,
-    state: authState({ userStatus: user.status, mfaEnabled, mfaVerified, role }),
+    state: authState({ userStatus: user.status, mfaEnabled, mfaVerified, role, mfaRequiredByFirm: membership?.mfaRequired ?? false }),
   };
 }
 
@@ -132,6 +141,7 @@ export function requireFirmContext(
         userId: auth.user.id,
         firmId: auth.firmId!,
         role: auth.role!,
+        consultantId: auth.consultantId,
         ip: meta.ip,
         userAgent: meta.userAgent,
       };

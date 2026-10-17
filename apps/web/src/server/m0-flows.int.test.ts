@@ -14,6 +14,7 @@ import { withOwnerClient } from "@verilo/db/testing";
 import * as authH from "./handlers/auth";
 import * as membersH from "./handlers/members";
 import * as filesH from "./handlers/files";
+import { createConsultant } from "./handlers/consultants";
 import { addMember, CapturingEmail, closeTestDb, createFirmWithAdmin, EICAR, linkToken, meta, PASSWORD, testDeps, uploadFile } from "./testing";
 
 const d = testDeps();
@@ -110,7 +111,11 @@ describe("invite users of all four roles", () => {
     const { firmId, admin } = await createFirmWithAdmin(d, "Foxtrot");
     for (const role of ["ADMIN", "MANAGER", "FINANCE", "CONSULTANT"] as const) {
       const email = `${role.toLowerCase()}@foxtrot.example.com`;
-      const inv = await membersH.inviteUser(d, admin.ctx, { email, role });
+      const consultantId =
+        role === "CONSULTANT"
+          ? (await createConsultant(d, admin.ctx, { firstName: "Cam", lastName: "Consultant", employmentType: "W2", emails: [email] })).id
+          : undefined;
+      const inv = await membersH.inviteUser(d, admin.ctx, { email, role, ...(consultantId ? { consultantId } : {}) });
       expect(inv.emailed).toBe(true);
       const acc = await membersH.acceptInvite(d, meta(), { token: linkToken(d, inv), name: role, password: PASSWORD });
       const auth = await resolveSession(d.db, acc.session.token);
@@ -168,11 +173,11 @@ describe("invite users of all four roles", () => {
   it("without outbound email, outside production the admin gets the link instead", async () => {
     const noEmail = testDeps({ email: new CapturingEmail(false) });
     const { admin } = await createFirmWithAdmin(noEmail, "Kilo");
-    const inv = await membersH.inviteUser(noEmail, admin.ctx, { email: "k@kilo.example.com", role: "CONSULTANT" });
+    const inv = await membersH.inviteUser(noEmail, admin.ctx, { email: "k@kilo.example.com", role: "MANAGER" });
     expect(inv.emailed).toBe(false);
     expect(inv.link).toMatch(/^http:\/\/localhost:3000\/invite\/[A-Za-z0-9_-]{43}$/);
     const prod = testDeps({ email: new CapturingEmail(false), config: { ...noEmail.config, appEnv: "production" } });
-    await expect(membersH.inviteUser(prod, admin.ctx, { email: "k2@kilo.example.com", role: "CONSULTANT" })).rejects.toThrow(/not configured/);
+    await expect(membersH.inviteUser(prod, admin.ctx, { email: "k2@kilo.example.com", role: "MANAGER" })).rejects.toThrow(/not configured/);
   });
 });
 
@@ -221,5 +226,17 @@ describe("file upload with virus scan", () => {
     expect((await filesH.listFiles(d, admin.ctx)).map((f) => f.id).sort()).toEqual([mine.id, adminFile.id].sort());
     const req = await filesH.requestUpload(d, consultant.ctx, { filename: "x.pdf", contentType: "application/pdf", sizeBytes: 3 });
     await expect(filesH.completeUpload(d, admin.ctx, { fileId: req.fileId })).rejects.toMatchObject({ status: 404 });
+  });
+});
+
+describe("consultant invitations (M1)", () => {
+  it("require a consultant record and link the membership to it", async () => {
+    const { admin } = await createFirmWithAdmin(d, "Papa");
+    await expect(membersH.inviteUser(d, admin.ctx, { email: "c1@papa.example.com", role: "CONSULTANT" })).rejects.toMatchObject({ status: 400 });
+    const c = await createConsultant(d, admin.ctx, { firstName: "Cam", lastName: "C", employmentType: "W2" });
+    const inv = await membersH.inviteUser(d, admin.ctx, { email: "c1@papa.example.com", role: "CONSULTANT", consultantId: c.id });
+    const acc = await membersH.acceptInvite(d, meta(), { token: linkToken(d, inv), name: "Cam", password: PASSWORD });
+    const auth = await resolveSession(d.db, acc.session.token);
+    expect(auth).toMatchObject({ role: "CONSULTANT", consultantId: c.id, state: "OK" });
   });
 });

@@ -7,7 +7,7 @@ export type InvitationRow = typeof invitation.$inferSelect;
 
 export async function insertInvitation(
   tx: Queryable,
-  i: { firmId: string; email: string; role: Role; tokenHash: string; expiresAt: Date; createdBy: string },
+  i: { firmId: string; email: string; role: Role; consultantId?: string | null; tokenHash: string; expiresAt: Date; createdBy: string },
 ): Promise<InvitationRow> {
   const [row] = await tx.insert(invitation).values(i).returning();
   return row!;
@@ -18,6 +18,7 @@ export interface InvitationLookup {
   firmId: string;
   email: string;
   role: Role;
+  consultantId: string | null;
   expiresAt: Date;
   acceptedAt: Date | null;
   revokedAt: Date | null;
@@ -30,6 +31,7 @@ export async function findInvitationByTokenHash(tx: Queryable, tokenHash: string
     firm_id: string;
     email: string;
     role: Role;
+    consultant_id: string | null;
     expires_at: string | Date;
     accepted_at: string | Date | null;
     revoked_at: string | Date | null;
@@ -41,6 +43,7 @@ export async function findInvitationByTokenHash(tx: Queryable, tokenHash: string
     firmId: r.firm_id,
     email: r.email,
     role: r.role,
+    consultantId: r.consultant_id,
     expiresAt: new Date(r.expires_at),
     acceptedAt: r.accepted_at ? new Date(r.accepted_at) : null,
     revokedAt: r.revoked_at ? new Date(r.revoked_at) : null,

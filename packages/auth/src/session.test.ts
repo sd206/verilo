@@ -20,6 +20,11 @@ describe("authState", () => {
     expect(authState({ ...base, mfaEnabled: true, mfaVerified: true, role: "ADMIN" })).toBe("OK");
   });
 
+  it("requires MFA setup when the firm's Admin required it for a Manager", () => {
+    expect(authState({ ...base, role: "MANAGER", mfaRequiredByFirm: true })).toBe("MFA_SETUP_REQUIRED");
+    expect(authState({ ...base, role: "MANAGER", mfaRequiredByFirm: true, mfaEnabled: true, mfaVerified: true })).toBe("OK");
+  });
+
   it("blocks users who are not ACTIVE", () => {
     expect(authState({ ...base, userStatus: "DISABLED", role: "ADMIN" })).toBe("DISABLED");
     expect(authState({ ...base, userStatus: "INVITED", role: "MANAGER" })).toBe("DISABLED");
@@ -37,6 +42,7 @@ describe("requireFirmContext", () => {
     user: { id: "u", email: "a@b.c", name: "A", status: "ACTIVE", mfaEnabled: true },
     firmId: "f",
     role: "ADMIN",
+    consultantId: null,
     mfaVerified: true,
     state: "OK",
     ...over,

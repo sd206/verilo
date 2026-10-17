@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, isNull } from "drizzle-orm";
 import { firm, membership } from "../schema";
 import type { Queryable } from "../client";
 
@@ -22,6 +22,6 @@ export async function listFirmsForUser(tx: Queryable, userId: string) {
     .select({ firmId: firm.id, displayName: firm.displayName, role: membership.role })
     .from(membership)
     .innerJoin(firm, eq(firm.id, membership.firmId))
-    .where(and(eq(membership.userId, userId)))
+    .where(and(eq(membership.userId, userId), isNull(membership.disabledAt)))
     .orderBy(asc(firm.displayName));
 }
