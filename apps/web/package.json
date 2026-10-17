@@ -8,11 +8,13 @@
     "build": "next build",
     "start": "node .next/standalone/apps/web/server.js",
     "typecheck": "tsc -p tsconfig.json",
-    "postbuild": "node ../../scripts/prepare-standalone.mjs"
+    "postbuild": "node ../../scripts/prepare-standalone.mjs",
+    "seed": "tsx scripts/seed.ts"
   },
   "dependencies": {
     "@radix-ui/react-label": "2.1.17",
     "@radix-ui/react-slot": "1.5.0",
+    "@tanstack/react-table": "8.21.3",
     "@verilo/auth": "workspace:*",
     "@verilo/db": "workspace:*",
     "@verilo/domain": "workspace:*",

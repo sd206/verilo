@@ -29,6 +29,16 @@ test("M0: sign up, MFA, invite all four roles, upload a clean file", async ({ pa
   const adminSecret = await signUpFirm(page, { firm: "Playwright Consulting", name: "Pat Admin", email: adminEmail });
   await expect(page.getByTestId("firm-name")).toHaveText("Playwright Consulting");
 
+  // Consultant logins link to a consultant record (M1), so create one first.
+  const consultantEmail = unique("consultant");
+  await page.goto("/app/consultants/new");
+  await page.getByLabel("First name").fill("Cam");
+  await page.getByLabel("Last name").fill("Consultant");
+  await page.getByLabel("Employment").selectOption("W2");
+  await page.getByLabel("Emails").fill(consultantEmail);
+  await page.getByRole("button", { name: "Create consultant" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Cam Consultant");
+
   // Invite one user of each role.
   const invited: Record<string, string> = {};
   for (const [role, label] of [
@@ -38,9 +48,10 @@ test("M0: sign up, MFA, invite all four roles, upload a clean file", async ({ pa
     ["CONSULTANT", "Consultant"],
   ] as const) {
     await page.goto("/app/settings/users");
-    const email = unique(role.toLowerCase());
+    const email = role === "CONSULTANT" ? consultantEmail : unique(role.toLowerCase());
     await page.getByLabel("Email").fill(email);
     await page.getByLabel("Role").selectOption(role);
+    if (role === "CONSULTANT") await page.getByLabel("Consultant record").selectOption({ label: "Cam Consultant" });
     await page.getByRole("button", { name: "Send invite" }).click();
     await expect(page.getByText(new RegExp(`Invitation sent to ${email}|Send ${email} this link`))).toBeVisible();
     invited[role] = await inviteLink(page, email);

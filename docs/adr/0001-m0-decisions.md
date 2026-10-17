@@ -32,3 +32,29 @@ Status: accepted (2026-10-16, product owner)
   their 30-second window — hardening item for M8.
 - `sa-clamav` (no data access) is used for the `clamav` service instead of the default compute
   account; it isn't in the 24.4 table.
+
+## M1 additions (approved 2026-10-17)
+- `firm_holiday` table for the holiday calendar (13.3 item 1).
+- The seed creates Summit Factoring as a FACTOR party only; its factoring profile arrives with M5.
+- Seed users share a dev password (`SEED_PASSWORD`, default `lonestar-dev-password`); the seed prints
+  authenticator keys for admin@ and finance@ and refuses to run in staging or production.
+
+## M1 interpretations (flagged for review)
+- `membership.disabled_at` and `membership.mfa_required` were added for "disable" and "require MFA"
+  on Users and roles (13.3 item 2). Disable is per firm: `app_user.status` is global, and one
+  firm's Admin must not lock a user out of another firm.
+- Consultant invitations now require a consultant record (`invitation.consultant_id`), and the
+  section 5.1 rule "consultant_id required when role = CONSULTANT" is a CHECK (NOT VALID, so older
+  rows are left alone).
+- Activating an engagement requires a REGULAR bill rate covering its start date (otherwise
+  `resolveRate` returns NO_RATE and invoicing would be blocked from day one).
+- Rates are changed by ending the current rate and adding a new one (section 16 `addRate`/`endRate`);
+  an end date can only move earlier, so a later rate can never be overlapped by an edit.
+- Party `kind` can't change after creation. Employment type can't change once a consultant has
+  engagements.
+- `party.code` is 2–10 capital letters or digits; required for prime vendors and implementation
+  partners (they can be bill-to and feed `{CLIENT}`).
+- Unknown `{TOKENS}` in a numbering pattern are literal text, as section 7.4 says.
+- Document status flags "expiring" within 30 days of expiry.
+- Invoice cycle ≥ timesheet cycle uses the order WEEKLY < BIWEEKLY < SEMIMONTHLY < MONTHLY.
+- Same-firm composite foreign keys back up tenant isolation for every cross-table reference.

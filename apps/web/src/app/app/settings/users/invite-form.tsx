@@ -11,19 +11,20 @@ import { formValues, useAction } from "@/components/forms/use-action";
 import { inviteUserAction } from "@/server/actions/members";
 import { ROLE_LABELS } from "@/lib/utils";
 
-export function InviteForm() {
+export function InviteForm({ consultants }: { consultants: { id: string; name: string }[] }) {
   const router = useRouter();
   const { pending, error, submit } = useAction(inviteUserAction);
+  const [role, setRole] = useState("CONSULTANT");
   const [result, setResult] = useState<{ emailed: boolean; link: string | null; email: string } | null>(null);
   return (
     <div className="grid gap-4">
       <form
-        className="grid gap-4 md:grid-cols-[2fr_2fr_1fr_auto] md:items-end"
+        className="grid gap-4 md:grid-cols-[2fr_2fr_1fr_2fr_auto] md:items-end"
         onSubmit={(e) => {
           e.preventDefault();
           const form = e.currentTarget;
           const v = formValues(form);
-          submit({ email: v.email, role: v.role, ...(v.name ? { name: v.name } : {}) }, (d) => {
+          submit({ email: v.email, role: v.role, ...(v.name ? { name: v.name } : {}), ...(v.role === "CONSULTANT" && v.consultantId ? { consultantId: v.consultantId } : {}) }, (d) => {
             setResult({ ...d, email: v.email! });
             form.reset();
             router.refresh();
@@ -34,7 +35,7 @@ export function InviteForm() {
         <Field label="Name (optional)" name="name" />
         <div className="grid gap-1.5">
           <Label htmlFor="role">Role</Label>
-          <Select id="role" name="role" defaultValue="CONSULTANT">
+          <Select id="role" name="role" value={role} onChange={(e) => setRole(e.target.value)}>
             {Object.entries(ROLE_LABELS).map(([v, l]) => (
               <option key={v} value={v}>
                 {l}
@@ -42,6 +43,21 @@ export function InviteForm() {
             ))}
           </Select>
         </div>
+        {role === "CONSULTANT" ? (
+          <div className="grid gap-1.5">
+            <Label htmlFor="consultantId">Consultant record</Label>
+            <Select id="consultantId" name="consultantId" defaultValue="">
+              <option value="">Choose…</option>
+              {consultants.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          </div>
+        ) : (
+          <div />
+        )}
         <Button type="submit" disabled={pending}>
           {pending ? "Inviting…" : "Send invite"}
         </Button>

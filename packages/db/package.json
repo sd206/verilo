@@ -12,8 +12,7 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "generate": "drizzle-kit generate",
-    "migrate": "pnpm --filter @verilo/jobs migrate",
-    "seed": "tsx scripts/seed.ts"
+    "migrate": "pnpm --filter @verilo/jobs migrate"
   },
   "dependencies": {
     "@verilo/domain": "workspace:*",

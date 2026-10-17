@@ -21,7 +21,7 @@ export default defineConfig({
   projects: [
     {
       name: "local",
-      testMatch: /m0-.*\.spec\.ts/,
+      testMatch: /m\d+-.*\.spec\.ts/,
       use: { ...devices["Desktop Chrome"], baseURL: `http://localhost:${port}` },
     },
     {

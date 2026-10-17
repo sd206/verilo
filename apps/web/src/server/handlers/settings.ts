@@ -75,8 +75,8 @@ export async function getFirmSettings(d: Deps, ctx: FirmContext) {
 }
 
 const firmSchema = z.strictObject({
-  legalName: text().min(2),
-  displayName: text(100).min(2),
+  legalName: text(200, 2),
+  displayName: text(100, 2),
   /** Empty keeps the current value. */
   ein: z
     .string()
@@ -191,7 +191,7 @@ export async function previewInvoiceNumber(d: Deps, ctx: FirmContext, input: unk
 // --- holiday calendar ------------------------------------------------------------------------
 
 const holidaysSchema = z.strictObject({
-  holidays: z.array(z.strictObject({ date: isoDate, name: text(100).min(1) })).max(200),
+  holidays: z.array(z.strictObject({ date: isoDate, name: text(100, 1) })).max(200),
 });
 
 export async function setHolidays(d: Deps, ctx: FirmContext, input: unknown) {

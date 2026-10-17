@@ -114,8 +114,8 @@ export async function getPartyDetail(d: Deps, ctx: FirmContext, input: unknown) 
 // --- create / update / archive ------------------------------------------------------------------
 
 const partyFields = {
-  legalName: text().min(1),
-  displayName: text(100).min(1),
+  legalName: text(200, 1),
+  displayName: text(100, 1),
   code: optionalText(10).transform((v) => (v ? v.toUpperCase() : null)),
   addressLine1: optionalText(),
   addressLine2: optionalText(),
@@ -263,7 +263,7 @@ export async function archiveParty(d: Deps, ctx: FirmContext, input: unknown) {
 
 const contactSchema = z.strictObject({
   partyId: uuid,
-  name: text(200).min(1),
+  name: text(200, 1),
   email: optionalText(254).refine((v) => !v || z.email().safeParse(v).success, "Enter a valid email"),
   phone: optionalText(50),
   roleLabel: optionalText(100),

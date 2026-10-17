@@ -8,7 +8,9 @@ export const optionalIsoDate = z
   .optional()
   .transform((v) => (v ? v : null));
 
-export const text = (max = 200) => z.string().trim().max(max);
+/** Required text (forms send null for empty fields). */
+export const text = (max = 200, min = 0) =>
+  z.preprocess((v) => v ?? "", z.string().trim().min(min, min > 0 ? "Required" : undefined).max(max));
 export const optionalText = (max = 200) =>
   z
     .union([z.string(), z.null()])
@@ -16,7 +18,7 @@ export const optionalText = (max = 200) =>
     .transform((v) => (v == null ? null : v.trim().slice(0, max) || null));
 
 /** "95.00" → 9500 cents. Never goes through floating point. */
-export const dollars = z.string().transform((v, ctx) => {
+export const dollars = z.preprocess((v) => v ?? "", z.string()).transform((v, ctx) => {
   const cents = parseDollars(v);
   if (cents === null) {
     ctx.addIssue({ code: "custom", message: "Enter an amount like 95.00" });
@@ -68,7 +70,7 @@ export const optionalInt = (min: number, max: number) =>
 const EMAIL = z.email();
 /** Comma/newline separated list or array → normalized, de-duplicated emails. */
 export const emailList = z
-  .union([z.array(z.string()), z.string()])
+  .union([z.array(z.string()), z.string(), z.null()])
   .optional()
   .transform((v, ctx) => {
     const raw = v == null ? [] : Array.isArray(v) ? v : v.split(/[\s,;]+/);

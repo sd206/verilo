@@ -143,8 +143,8 @@ const engagementFields = {
   biweeklyAnchorDate: optionalIsoDate,
   invoiceCycle: z.enum(CYCLES),
   evidenceRequired: bool,
-  expectedWeeklyHours: z.string().trim().default("40"),
-  maxWeeklyHoursWarning: z.string().trim().default("50"),
+  expectedWeeklyHours: z.preprocess((v) => v ?? "40", z.string().trim()),
+  maxWeeklyHoursWarning: z.preprocess((v) => v ?? "50", z.string().trim()),
   deductionOverride: optionalPercent,
   factored: bool,
   primeWorkOrderNo: optionalText(100),
@@ -311,7 +311,7 @@ export async function endRate(d: Deps, ctx: FirmContext, input: unknown) {
 
 const poSchema = z.strictObject({
   engagementId: uuid,
-  poNumber: text(100).min(1),
+  poNumber: text(100, 1),
   amount: optionalDollars,
   startDate: optionalIsoDate,
   endDate: optionalIsoDate,

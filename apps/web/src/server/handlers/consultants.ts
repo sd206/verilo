@@ -75,8 +75,8 @@ export async function getConsultantDetail(d: Deps, ctx: FirmContext, input: unkn
 }
 
 const fields = {
-  firstName: text(100).min(1),
-  lastName: text(100).min(1),
+  firstName: text(100, 1),
+  lastName: text(100, 1),
   emails: emailList,
   phone: optionalText(50),
   employmentType: z.enum(["W2", "CONTRACTOR"]),
