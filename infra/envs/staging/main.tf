@@ -31,6 +31,18 @@ variable "app_base_url" {
   default     = ""
 }
 
+variable "inbound_email_domain" {
+  description = "Domain whose MX points at Postmark inbound (section 9), e.g. inbound-staging.example.com. Empty keeps the placeholder."
+  type        = string
+  default     = ""
+}
+
+variable "vertex_location" {
+  description = "Vertex AI location for Gemini. Empty uses the region."
+  type        = string
+  default     = ""
+}
+
 data "terraform_remote_state" "shared" {
   backend = "gcs"
   config = {
@@ -93,6 +105,9 @@ module "env" {
   files_versioning       = false
   exports_retention_days = 30
   kms_rotation_period    = null
+
+  inbound_email_domain = var.inbound_email_domain
+  vertex_location      = var.vertex_location
 
   qbo_environment    = "sandbox"
   magic_link_enabled = false # until a Postmark staging server exists
